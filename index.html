@@ -528,6 +528,24 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 const LS = 'fillmycup_v1';
 
 /* ============================ time of day ============================ */
+const QTAGS = ["scarcity","present","scarcity","still","still","gratitude","scarcity","gratitude","scarcity","scarcity","scarcity","notice","scarcity","present","gratitude","vision","gratitude","notice","still","vision","present","gratitude","notice","gratitude","notice","vision","scarcity","notice","scarcity","still"];
+const WHY_MAP = {
+  'I want to stop living braced for the worst': { themes:['scarcity'], meds:['alarm','manna','nothing'] },
+  'I want to be more present':                  { themes:['present'],  meds:['leaves','five','here'] },
+  'I want to feel grateful instead of behind':  { themes:['gratitude'],meds:['manna','earn','openhand'] },
+  'I want to hold a picture of where I\u2019m going':{ themes:['vision'],   meds:['values','bus','sky'] },
+  'I want to be still':                         { themes:['still'],    meds:['breath','paced','water'] },
+  'I want to notice what\u2019s already good':       { themes:['notice'],   meds:['five','sky','setdown'] }
+};
+function whyThemes(why){
+  var t=[]; (why||[]).forEach(function(w){ var m=WHY_MAP[w]; if(m) m.themes.forEach(function(x){ if(t.indexOf(x)<0) t.push(x); }); });
+  return t;
+}
+function whyMeds(why){
+  var ids=[]; (why||[]).forEach(function(w){ var m=WHY_MAP[w]; if(m) m.meds.forEach(function(x){ if(ids.indexOf(x)<0) ids.push(x); }); });
+  return ids.map(function(id){ return MEDS.filter(function(m){return m.id===id;})[0]; }).filter(Boolean).slice(0,4);
+}
+
 function timeOfDay() {
   const h = new Date().getHours();
   if (h < 6) return {
@@ -736,6 +754,57 @@ async function callAI(settings, sys, user) {
   const d = await r.json();
   return d.content.filter(c => c.type === 'text').map(c => c.text).join('\n').trim();
 }
+function clip(t,n){ t=String(t||'').replace(/\s+/g,' ').trim(); return t.length>n ? t.slice(0,n)+'…' : t; }
+
+/* Everything she has told this app, gathered for a prompt. Stays on the device
+   until the moment of the call, and only a compressed summary is ever sent. */
+async function gracePrompt(db,kind,avoid){
+  const sys=aiSystem(db.profile)+`
+
+RIGHT NOW your only job is to write ONE question for them to sit with — nothing else.
+Draw on what you know of them below. Notice what they keep circling, what they avoid, what has shifted, what they have never once mentioned.
+Rules: one sentence. Second person. Warm, specific, and answerable — not a riddle, not therapy-speak, not flattery. It may gently name something you have noticed, but it must end as a question.
+Never speak as God, and never invent what God is saying. Return ONLY the question. No quotation marks, no preamble.`;
+  const u='Here is everything they have told this app so far:\n\n'+graceContext(db)
+    +(avoid&&avoid.length?'\n\nDo not repeat or lightly reword any of these, which you have already asked:\n'+avoid.map(a=>'· '+a).join('\n'):'')
+    +(kind==='journal'
+      ? '\n\nWrite one question for them to write a journal entry about today.'
+      : '\n\nWrite one short question for them to answer in a line or two this morning.');
+  const out=await callAI(db.settings,sys,u);
+  return String(out||'').replace(/^["'\s]+|["'\s]+$/g,'').split('\n')[0].slice(0,220);
+}
+
+function graceContext(db){
+  const p=db.profile||{}, out=[];
+  out.push('WHO: '+(p.name||'friend')+'.');
+  if((p.why||[]).length) out.push('CAME HERE BECAUSE: '+p.why.join('; ')+'.');
+  if(p.carrying) out.push('CARRYING (their words): "'+clip(p.carrying,320)+'"');
+  if(p.seeking)  out.push('THIRSTY FOR (their words): "'+clip(p.seeking,240)+'"');
+
+  const cup=(db.cup||[]).slice(0,10);
+  if(cup.length) out.push('IN THEIR CUP (times there was enough): '+cup.map(c=>(c.when?c.when+' — ':'')+clip(c.text,110)).join(' | '));
+
+  const vis=(db.vision||[]).filter(v=>!v.hero);
+  const hero=(db.vision||[]).find(v=>v.hero);
+  if(hero) out.push('THE LIFE THEY PICTURE: "'+clip(hero.line,300)+'"');
+  if(vis.length) out.push('PIECES OF THAT VISION: '+vis.map(v=>v.title+(v.already?' (already true: '+clip(v.already,60)+')':'')).join('; '));
+
+  const j=(db.journal||[]).slice(0,6);
+  if(j.length) out.push('RECENT JOURNAL:\n'+j.map(e=>{
+    const gr=(e.convo||[]).filter(m=>m.role==='ai'&&!m.text.startsWith('__')).slice(-1)[0];
+    return '· '+fmt(e.date)+(e.prompt?' ['+clip(e.prompt,70)+']':'')+' — "'+clip(e.text,260)+'"'
+      + (gr?' (you replied: "'+clip(gr.text,140)+'")':'');
+  }).join('\n'));
+
+  const ans=(db.answers||[]).slice(0,6);
+  if(ans.length) out.push('RECENT DAILY QUESTIONS: '+ans.map(a=>clip(a.q,60)+' → "'+clip(a.a,90)+'"').join(' | '));
+
+  const gr=(db.gratitude||[]).slice(0,4).map(g=>(g.items||[]).filter(x=>x&&x.trim()).join(', ')).filter(Boolean);
+  if(gr.length) out.push('RECENTLY GRATEFUL FOR: '+gr.join(' | '));
+
+  return clip(out.join('\n'),4200);
+}
+
 function aiSystem(p) {
   return `You are a warm, steady companion inside a small personal app called Fill My Cup. The person using it is ${p.name || 'a friend'}.
 They came here because: ${(p.why || []).join(', ') || 'unspecified'}. In their words, what they're carrying: "${p.carrying || 'not said'}". What they long for: "${p.seeking || 'not said'}".
@@ -876,6 +945,8 @@ function Intake({
   const [i, setI] = useState(0);
   const [name, setName] = useState('');
   const [why, setWhy] = useState([]);
+  const [whyOwn, setWhyOwn] = useState('');
+  const [ack, setAck] = useState(false);
   const [carrying, setCarrying] = useState('');
   const [seeking, setSeeking] = useState('');
   const [seed, setSeed] = useState(['', '', '', '']);
@@ -953,18 +1024,42 @@ function Intake({
     placeholder: "Your name",
     autoFocus: true,
     onKeyDown: e => {
-      if (e.key === 'Enter' && name.trim()) setI(2);
+      if (e.key === 'Enter' && name.trim() && ack) setI(2);
     }
   }), /*#__PURE__*/React.createElement("div", {
+    style: { marginTop: 22, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '17px 18px' }
+  }, /*#__PURE__*/React.createElement("span", { className: "eyebrow" }, "Before we go further"),
+     /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 15, lineHeight: 1.62, margin: '6px 0 10px', color: 'var(--ink)' } },
+       "This is a space for building gentle habits — gratitude, reflection, stillness, and a steadier way of seeing what you already have. That is what it is for, and it can genuinely help."),
+     /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 15, lineHeight: 1.62, margin: '0 0 10px', color: 'var(--ink)' } },
+       "It is ", /*#__PURE__*/React.createElement("b", null, "not therapy"), ", not medical or mental-health care, and not a crisis service. Nothing here is professional advice, and nobody here is responsible for the choices you make from it. If something you carry is heavy, or old, or keeps coming back — please bring it to a licensed therapist. That is not a failure. It is the right tool for that work."),
+     /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 15, lineHeight: 1.62, margin: '0 0 12px', color: 'var(--ink)' } },
+       "And if you are ever in danger or thinking of harming yourself, please stop and reach a person today — someone who loves you, your doctor, or your local emergency number or crisis line. Not this app."),
+     /*#__PURE__*/React.createElement("button", {
+       onClick: () => setAck(a => !a),
+       style: { display: 'flex', gap: 11, alignItems: 'flex-start', width: '100%', textAlign: 'left',
+                background: ack ? 'var(--acc-soft)' : 'var(--paper-2)', border: '1px solid ' + (ack ? 'var(--acc)' : 'var(--line)'),
+                borderRadius: 12, padding: '12px 13px', cursor: 'pointer', transition: 'all .15s' }
+     }, /*#__PURE__*/React.createElement("span", {
+          style: { flex: 'none', width: 20, height: 20, borderRadius: 6, marginTop: 1,
+                   border: '2px solid ' + (ack ? 'var(--acc)' : 'var(--ink-faint)'),
+                   background: ack ? 'var(--acc)' : 'transparent', color: '#fff',
+                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }
+        }, ack ? '✓' : ''),
+        /*#__PURE__*/React.createElement("span", { style: { fontSize: 13.5, lineHeight: 1.5, color: 'var(--ink)' } },
+          "I understand this space is for building habits and shifting how I see things — and that it is not a replacement for therapy or professional care.")
+     )
+  ), /*#__PURE__*/React.createElement("div", {
     className: "navrow"
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn ghost sm",
     onClick: () => setI(0)
   }, "Back"), /*#__PURE__*/React.createElement("button", {
     className: "btn",
-    disabled: !name.trim(),
+    disabled: !name.trim() || !ack,
     onClick: () => setI(2)
-  }, "Continue"))),
+  }, "I acknowledge — continue"))),
+
   /*#__PURE__*/
   /* 2 — why */
   React.createElement("div", {
@@ -976,13 +1071,22 @@ function Intake({
     className: "ask"
   }, "What brought you here, ", name, "?"), /*#__PURE__*/React.createElement("p", {
     className: "why"
-  }, "Pick as many as fit. There’s no wrong answer, and “I’m not sure yet” is a real one."), /*#__PURE__*/React.createElement("div", {
+  }, "Pick as many as fit, or write your own. There’s no wrong answer, and “I’m not sure yet” is a real one — it just means I’ll keep the questions wide instead of narrowing them."), /*#__PURE__*/React.createElement("div", {
     className: "chips"
   }, WHY_OPTS.map(o => /*#__PURE__*/React.createElement("button", {
     key: o,
     className: 'chip' + (why.includes(o) ? ' on' : ''),
     onClick: () => setWhy(w => w.includes(o) ? w.filter(x => x !== o) : [...w, o])
   }, o))), /*#__PURE__*/React.createElement("div", {
+    style: { marginTop: 16 }
+  }, /*#__PURE__*/React.createElement("label", { className: "field" }, "Or say it your own way"),
+     /*#__PURE__*/React.createElement("input", {
+       type: "text",
+       value: whyOwn,
+       onChange: e => setWhyOwn(e.target.value),
+       placeholder: "Something else brought me here…"
+     })
+  ), /*#__PURE__*/React.createElement("div", {
     className: "navrow"
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn ghost sm",
@@ -1236,8 +1340,9 @@ function Intake({
     onDone({
       profile: {
         onboarded: true,
+        acknowledged: new Date().toISOString(),
         name: name.trim() || 'friend',
-        why,
+        why: whyOwn.trim() ? why.concat([whyOwn.trim()]) : why,
         carrying: carrying.trim(),
         seeking: seeking.trim(),
         affirm: 'prompt'
@@ -1526,13 +1631,30 @@ function Today({
   const ansToday = db.answers.find(a => a.date === t);
   const [ans, setAns] = useState(ansToday ? ansToday.a : '');
   const [own, setOwn] = useState(false);
+  const [aiQ, setAiQ] = useState(db.lastPrompt && db.lastPrompt.date === t ? db.lastPrompt.q : '');
+  const [aiBusy, setAiBusy] = useState(false);
+  const hasAI = !!db.settings.aiKey;
+  async function askToday(){
+    if(aiBusy) return;
+    setAiBusy(true);
+    try{
+      const used=(db.answers||[]).map(a=>a.q).filter(Boolean).slice(0,8);
+      const q2=await gracePrompt(db,'daily',used);
+      setAiQ(q2);
+      save({...db, lastPrompt:{date:t, q:q2}});
+    }catch(e){}
+    setAiBusy(false);
+  }
   const [ownQ, setOwnQ] = useState('');
   const qIdx = (() => {
     let s = 0;
     for (let i = 0; i < t.length; i++) s = s * 31 + t.charCodeAt(i) >>> 0;
+    var themes = whyThemes(p.why);
+    var pool = themes.length ? QUESTIONS.map(function(q,i){return i;}).filter(function(i){return themes.indexOf(QTAGS[i])>=0;}) : [];
+    if (pool.length && s % 5 < 3) return pool[s % pool.length];
     return s % QUESTIONS.length;
   })();
-  const q = ansToday && ansToday.q ? ansToday.q : own && ownQ ? ownQ : QUESTIONS[qIdx];
+  const q = ansToday && ansToday.q ? ansToday.q : own && ownQ ? ownQ : aiQ ? aiQ : QUESTIONS[qIdx];
   function setG(i, v) {
     const items = [...g.items];
     items[i] = v;
@@ -1634,7 +1756,11 @@ function Today({
       color: 'var(--acc-lt)'
     },
     onClick: () => setOwn(o => !o)
-  }, own ? 'Use today’s question' : 'Write my own'))), /*#__PURE__*/React.createElement("div", {
+  }, own ? 'Use today’s question' : 'Write my own'), hasAI && !ansToday && /*#__PURE__*/React.createElement("button", {
+    className: "skip",
+    style: { color: 'var(--acc-lt)' },
+    onClick: askToday
+  }, aiBusy ? 'Thinking…' : '✨ One for today'))), /*#__PURE__*/React.createElement("div", {
     style: {
       height: 16
     }
@@ -2048,6 +2174,21 @@ function Still({
       margin: '0 0 20px'
     }
   }, "Thirty-four short sessions, read aloud. Put the phone down, close your eyes, and follow the circle — it grows as you breathe in and falls as you breathe out. Four of them are meant to be done outside, on your feet.")),
+  (function(){
+    var picks = whyMeds(db.profile.why);
+    if(!picks.length) return null;
+    return React.createElement('div',{style:{marginTop:22}},
+      React.createElement('span',{className:'eyebrow',style:{color:'var(--spark-deep)'}},'Start here \u2014 from what you told me'),
+      picks.map(function(m){
+        return React.createElement('button',{className:'medcard',key:'sh_'+m.id,onClick:function(){setPlay(m);}},
+          React.createElement('div',{className:'ring'},React.createElement('i',null)),
+          React.createElement('div',{className:'tx'},
+            React.createElement('b',null,m.title),
+            React.createElement('span',null,m.blurb),
+            React.createElement('div',{style:{fontSize:11.5,color:'var(--acc-deep)',fontWeight:700,marginTop:3}},'\u25B6 ',m.mins,' min')));
+      })
+    );
+  })(),
   CATS.map(function(c){
     var group = MEDS.filter(function(m){ return m.cat === c[0]; });
     if(!group.length) return null;
@@ -2307,6 +2448,7 @@ Reply as their companion — warm, brief, real. If they're spiralling, help them
     onClick: () => {
       setOpen(true);
       setMsg(null);
+      if (!(db.companion && db.companion.metGrace)) save({ ...db, companion: { ...(db.companion || {}), metGrace: true } });
     },
     "aria-label": name ? 'Talk to ' + name : 'Companion'
   }, /*#__PURE__*/React.createElement("i", null)), open && /*#__PURE__*/React.createElement("div", {
@@ -2361,7 +2503,18 @@ Reply as their companion — warm, brief, real. If they're spiralling, help them
       setOpen(false);
       go('cup');
     }
-  }, "Show me my cup"), /*#__PURE__*/React.createElement("button", {
+  }, "Show me my cup"), db.settings.aiKey && /*#__PURE__*/React.createElement("button", {
+    className: "btn ghost sm",
+    disabled: busy,
+    onClick: async () => {
+      setBusy(true); setReply('');
+      try {
+        const sys = aiSystem(db.profile) + "\n\nRIGHT NOW: they have asked what you notice about them. Read across everything below — their intake, their cup, their journal, what they keep returning to — and reflect it back.\n\nGive them: (1) one pattern you genuinely see, named specifically and kindly, with the evidence you are drawing on so they can check you; (2) if there is one, something that has SHIFTED since they started, because people rarely notice their own movement; (3) one thing good about them that they have not given themselves credit for.\n\nFour to seven sentences. Warm, plain, specific. No lists, no headings, no flattery, no diagnosis, no clinical labels. Speak as a friend who has been paying attention, and hold it lightly — say you might be wrong rather than pronouncing on them. End with one short question.\n\nIMPORTANT — where it genuinely fits, and only then, say plainly that this looks like something worth taking to a therapist. Specifically when you see: a pattern that clearly predates this app and traces back to something old or painful; distress that keeps returning no matter how much insight they gather; self-blame or shame that does not shift; or anything they seem to be carrying alone. Say it warmly and without alarm — that a good therapist is for building something insight alone cannot build, not a sign anything is wrong with them. Never diagnose, never name a condition. And if anything suggests they are in real danger or crisis, set everything else aside and urge them, gently and directly, to reach a person today — someone who loves them, their doctor, or a crisis line.\n\nRemember you are not their therapist and not a substitute for one, and say so if the moment calls for it. Never speak as God or invent what God is saying.";
+        setReply(await callAI(db.settings, sys, 'Here is everything they have told this app:\n\n' + graceContext(db)));
+      } catch (e) { setReply('__ERR__' + e.message); }
+      setBusy(false);
+    }
+  }, "What are you noticing about me?"), /*#__PURE__*/React.createElement("button", {
     className: "btn ghost sm",
     onClick: () => {
       setOpen(false);
@@ -2408,6 +2561,9 @@ Reply as their companion — warm, brief, real. If they're spiralling, help them
   }, "Thanks")))));
 }
 function pickNudge(db) {
+  if (!(db.companion && db.companion.metGrace)) {
+    return 'Hi — I’m ' + ((db.companion && db.companion.name) || 'Grace') + '. I live down here. Tap me any time, or ignore me entirely.';
+  }
   const n = db.cup.length,
     t = today();
   const gt = db.gratitude.find(x => x.date === t);
@@ -2657,6 +2813,23 @@ function Settings({
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
+  }, "What this is, and what it isn’t"), /*#__PURE__*/React.createElement("p", {
+    className: "serif muted",
+    style: { fontSize: 14.5, margin: '0 0 9px' }
+  }, "This space is for building gentle habits — gratitude, reflection, stillness, and a steadier way of seeing what you already have."),
+     /*#__PURE__*/React.createElement("p", {
+    className: "serif muted",
+    style: { fontSize: 14.5, margin: '0 0 9px' }
+  }, "It is not therapy, not medical or mental-health care, and not a crisis service. Nothing here is professional advice, and nobody here is responsible for the choices you make from it. If something you carry is heavy, or old, or keeps coming back, please bring it to a licensed therapist."),
+     /*#__PURE__*/React.createElement("p", {
+    className: "serif muted",
+    style: { fontSize: 14.5, margin: 0 }
+  }, "If you are ever in danger or thinking of harming yourself, reach a person today — someone who loves you, your doctor, or your local emergency number or crisis line. Not this app.")
+  ), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: { padding: 19, marginBottom: 15 }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "eyebrow"
   }, "Sharing this"), /*#__PURE__*/React.createElement("p", {
     className: "serif muted",
     style: {
@@ -2697,7 +2870,7 @@ function Settings({
       textAlign: 'center',
       lineHeight: 1.7
     }
-  }, "A companion for practice — not a substitute for prayer, your church, your people, or a therapist. If you’re in real distress, please tell someone who can sit with you."));
+  }, "Made for practice, not for diagnosis. Everything you write stays on this device."));
 }
 
 /* ============================ APP ============================ */
@@ -2741,6 +2914,18 @@ function Journal({db,save,toast}){
   const [open,setOpen]=useState(null);
   const [draft,setDraft]=useState('');
   const [prompt,setPrompt]=useState('');
+  const [aiBusy,setAiBusy]=useState(false);
+  const [aiErr,setAiErr]=useState('');
+  const hasAI=!!db.settings.aiKey;
+  async function askGrace(){
+    if(aiBusy) return;
+    setAiErr(''); setAiBusy(true);
+    try{
+      const used=(db.journal||[]).map(j=>j.prompt).filter(Boolean).slice(0,8);
+      setPrompt(await gracePrompt(db,'journal',used));
+    }catch(e){ setAiErr('Couldn’t reach Grace just now.'); }
+    setAiBusy(false);
+  }
   const list=db.journal||[];
 
   function newEntry(p){
@@ -2771,8 +2956,13 @@ function Journal({db,save,toast}){
       React.createElement('div',{style:{display:'flex',gap:9,flexWrap:'wrap'}},
         React.createElement('button',{className:'btn sm',onClick:()=>newEntry(prompt)},'Write about this'),
         React.createElement('button',{className:'btn ghost sm',onClick:rollPrompt},'Another'),
+        hasAI&&React.createElement('button',{className:'btn ghost sm',disabled:aiBusy,onClick:askGrace},
+          aiBusy?'Thinking…':'✨ One just for me'),
         React.createElement('button',{className:'btn ghost sm',onClick:()=>newEntry('')},'Blank page')
-      )
+      ),
+      aiErr&&React.createElement('div',{style:{fontSize:12.5,color:'var(--rose)',marginTop:9,fontWeight:600}},aiErr),
+      !hasAI&&React.createElement('div',{style:{fontSize:12,color:'var(--ink-soft)',marginTop:9,lineHeight:1.5}},
+        'With an AI key in Settings, Grace can write a question drawn from what you’ve already written here.')
     ),
     list.length===0&&React.createElement('p',{className:'serif muted',style:{fontSize:16}},
       'Nothing written yet. There’s no right length and no one else reads it.'),
@@ -2809,7 +2999,7 @@ RIGHT NOW you are reading a journal entry with them and talking it through — u
 Respond to what they actually wrote. Reflect back what you notice, gently and specifically, then ask ONE question that opens it up further. Do not stack questions. Do not summarise their life back at them. Do not give a list of advice.
 If you notice a pattern across what they've written before, you may name it kindly — once — and let them decide what to do with it.
 Their cup currently holds ${db.cup.length} entries of provision. Their vision includes: ${(db.vision||[]).map(v=>v.title).join(', ')||'nothing yet'}.
-If they sound like they are in real distress, say so plainly and warmly, and encourage them toward a person who can sit with them — a friend, their pastor, a therapist. Do not try to be that yourself.`;
+If you notice a pattern that clearly predates this app, or distress that keeps returning however much insight they gather, or shame that will not shift — say so gently, once, and name that a therapist is the right place for that kind of work. Frame it as building something insight alone cannot build, never as a verdict on them. Do not diagnose and do not use clinical labels. You are not their therapist and not a substitute for one. If they sound like they are in real distress or danger, set the conversation aside and urge them warmly and directly to reach someone today — a person who loves them, their doctor, or a crisis line. Do not try to be that yourself.`;
   }
 
   async function talk(first){
