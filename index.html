@@ -1566,6 +1566,7 @@ function CupView({
     pct = cupPct(n);
   const [editing, setEditing] = useState(null);
   const [cupNudge, setCupNudge] = useState('');
+  const [why, setWhyOpen] = useState(db.cup.length < 3);
   function openEdit(c) {
     setEditing(c);
     setTx(c.text || '');
@@ -1630,6 +1631,25 @@ function CupView({
     },
     onClick: openAdd
   }, "+ Add provision"), /*#__PURE__*/React.createElement("div", {
+    style: { marginTop: 18 }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setWhyOpen(v => !v),
+    style: { background: 'none', border: 'none', padding: 0, color: 'var(--acc-deep)', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }
+  }, why ? "What the cup is  ▾" : "What the cup is  ▸"),
+     why && /*#__PURE__*/React.createElement("div", {
+       className: "settle",
+       style: { marginTop: 10, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '16px 17px' }
+     },
+       /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 16, lineHeight: 1.6, margin: '0 0 10px', color: 'var(--ink)' } },
+         "This is your record of provision — every time there was enough."),
+       /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 15.5, lineHeight: 1.6, margin: '0 0 10px', color: 'var(--ink-soft)' } },
+         "It isn’t affirmations. It’s evidence. If you’ve spent years braced for the next thing to go wrong, telling yourself it will all be fine doesn’t land — some part of you argues back. A list of the times it ", /*#__PURE__*/React.createElement("i", null, "was"), " fine is harder to argue with, because you were there."),
+       /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 15.5, lineHeight: 1.6, margin: '0 0 10px', color: 'var(--ink-soft)' } },
+         "Put anything in it. A bill that got covered. A call that came at the right hour. A door that opened, a person who showed up, a thing you dreaded that turned out alright. Old memories count as much as this morning."),
+       /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 15.5, lineHeight: 1.6, margin: 0, color: 'var(--ink-soft)' } },
+         "Then, on the days the dread arrives, come here and read before you check anything. That’s what it’s for. The level only ever rises — there’s nothing to keep up and no way to fall behind.")
+     )
+  ), /*#__PURE__*/React.createElement("div", {
     className: "rule"
   }), /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
