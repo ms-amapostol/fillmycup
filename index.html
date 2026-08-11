@@ -198,6 +198,10 @@
   @media (prefers-reduced-motion:reduce){.breath i{animation:none;transform:scale(.9)}}
   .medline{font-family:'Spectral',serif;font-size:22px;font-weight:300;line-height:1.55;max-width:22ch;min-height:3.2em}
   .medctl{margin-top:32px;display:flex;gap:12px}
+  .medstep{background:none;border:none;color:rgba(255,255,255,.55);font-family:inherit;font-size:12px;
+    letter-spacing:.09em;text-transform:uppercase;font-weight:600;padding:6px 4px;transition:color .15s}
+  .medstep:hover:not(:disabled){color:#fff}
+  .medstep:disabled{opacity:.28}
   .medbar{position:absolute;left:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--acc-lt),rgba(165,200,221,.25));
     width:0;animation:medfill linear forwards}
   @keyframes medfill{from{width:0}to{width:100%}}
@@ -811,7 +815,9 @@ function useMedia(key){
 }
 
 function cupPct(n) {
-  return Math.round(100 * n / (n + 13));
+  /* rises quickly at first so the early entries feel like something,
+     and eases toward a brim it never quite reaches */
+  return Math.round(94 * (1 - Math.exp(-n / 10)));
 }
 
 /* ============================ AI ============================ */
@@ -1624,7 +1630,7 @@ function CupView({
     className: "cupnum"
   }, n, " ", n === 1 ? 'entry' : 'entries'), /*#__PURE__*/React.createElement("p", {
     className: "cupsub"
-  }, n === 0 ? 'Nothing in it yet. Add the first thing that comes to mind.' : n < 5 ? 'It’s begun. Every entry raises the level — it never empties.' : 'Every one of these was a time there was enough. Read back through when the dread comes.')), /*#__PURE__*/React.createElement("button", {
+  }, n === 0 ? 'Nothing in it yet. Add the first thing that comes to mind.' : n < 3 ? 'It’s begun. Every entry raises the level — it never empties.' : 'Every one of these was a time there was enough. Read back through when the dread comes.')), /*#__PURE__*/React.createElement("button", {
     className: "btn wide warm",
     style: {
       marginTop: 22
@@ -1742,7 +1748,7 @@ function CupView({
 
 /* ============================ TODAY ============================ */
 /* ---------- image slot: upload / replace / clear ---------- */
-function ImageSlot({mkey,label,hint,h,onDone}){
+function ImageSlot({mkey,label,hint,h,onDone,natural}){
   const [ver,setVer]=useState(0);
   const [busy,setBusy]=useState(false);
   const [real,setReal]=useState(null);
@@ -1757,17 +1763,22 @@ function ImageSlot({mkey,label,hint,h,onDone}){
   async function pick(e){
     const f=e.target.files&&e.target.files[0]; e.target.value='';
     if(!f)return; setBusy(true);
-    const b=await shrinkImage(f,1400,0.85);
+    const b=await shrinkImage(f,1600,0.86);
     if(b){ await mediaPut(mkey,b); setVer(v=>v+1); onDone&&onDone(); }
     setBusy(false);
   }
   return React.createElement('div',{style:{marginBottom:14}},
     React.createElement('label',{className:'field'},label),
+    /* naturalPreview: show the picture at its own proportions, as it will appear */
     React.createElement('div',{
       onClick:()=>ref.current.click(),
-      style:{height:h||86,borderRadius:13,border:'1px solid var(--line)',cursor:'pointer',
-        background: real ? ('url('+real+') center/cover') : 'var(--paper-2)',
-        display:'flex',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden'}},
+      style: (natural && real)
+        ? {borderRadius:13,border:'1px solid var(--line)',cursor:'pointer',position:'relative',overflow:'hidden',background:'var(--paper-2)'}
+        : {height:h||86,borderRadius:13,border:'1px solid var(--line)',cursor:'pointer',
+           background: real ? ('url('+real+') center/cover') : 'var(--paper-2)',
+           display:'flex',alignItems:'center',justifyContent:'center',position:'relative',overflow:'hidden'}},
+      (natural && real) && React.createElement('img',{src:real,alt:'',
+        style:{display:'block',width:'100%',height:'auto',maxHeight:320,objectFit:'cover'}}),
       !real&&React.createElement('span',{style:{fontSize:12.5,color:'var(--ink-faint)'}},busy?'Working…':'Tap to add an image'),
       real&&React.createElement('span',{style:{position:'absolute',right:8,bottom:8,background:'rgba(43,58,64,.72)',
         color:'#fff',fontSize:10.5,fontWeight:700,padding:'4px 9px',borderRadius:14}},busy?'Working…':'Replace')
@@ -1777,6 +1788,29 @@ function ImageSlot({mkey,label,hint,h,onDone}){
       onClick:async()=>{ await mediaDel(mkey); setVer(v=>v+1); onDone&&onDone(); }},'Use the included picture'),
     React.createElement('input',{ref:ref,type:'file',accept:'image/*',style:{display:'none'},onChange:pick})
   );
+}
+
+/* A vision piece. With a photo it becomes a card and the photo keeps its own
+   shape — phone pictures are 4:3 or 3:4 and shouldn't be forced into a strip. */
+function VisionPiece({v,onOpen}){
+  const url=useMedia('vis_'+v.id);
+  const body=React.createElement('div',{style:{flex:1}},
+    React.createElement('h4',null,v.title),
+    v.line&&React.createElement('p',null,v.line),
+    v.already&&React.createElement('div',{className:'fe'},'▸ already true: '+v.already));
+
+  if(!url){
+    return React.createElement('div',{className:'panel',onClick:onOpen,style:{cursor:'pointer'}},
+      React.createElement('div',{className:'th',style:{background:TINTS[(v.tint||0)%TINTS.length][0]}},
+        React.createElement('span',{style:{color:'rgba(255,255,255,.9)'}},TINTS[(v.tint||0)%TINTS.length][1])),
+      body);
+  }
+  return React.createElement('div',{onClick:onOpen,
+    style:{cursor:'pointer',margin:'0 0 16px',borderRadius:16,overflow:'hidden',
+      background:'var(--card)',border:'1px solid var(--line)'}},
+    React.createElement('img',{src:url,alt:'',loading:'lazy',
+      style:{display:'block',width:'100%',height:'auto',maxHeight:320,objectFit:'cover',objectPosition:'center'}}),
+    React.createElement('div',{style:{padding:'13px 15px 15px'}},body));
 }
 
 function VisionThumb({v}){
@@ -2124,20 +2158,9 @@ function Vision({
       margin: 0,
       whiteSpace: 'pre-wrap'
     }
-  }, hero.line)), rest.map(v => /*#__PURE__*/React.createElement("div", {
-    className: "panel",
-    key: v.id,
-    onClick: () => open(v),
-    style: {
-      cursor: 'pointer'
-    }
-  }, /*#__PURE__*/React.createElement(VisionThumb, { v: v }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("h4", null, v.title), v.line && /*#__PURE__*/React.createElement("p", null, v.line), v.already && /*#__PURE__*/React.createElement("div", {
-    className: "fe"
-  }, "▸ already true: ", v.already)))), rest.length === 0 && /*#__PURE__*/React.createElement("p", {
+  }, hero.line)), rest.map(v => /*#__PURE__*/React.createElement(VisionPiece, {
+    key: v.id, v: v, onOpen: () => open(v)
+  })), rest.length === 0 && /*#__PURE__*/React.createElement("p", {
     className: "serif muted",
     style: {
       fontSize: 16
@@ -2205,8 +2228,9 @@ function Vision({
   }), ed.id && /*#__PURE__*/React.createElement(ImageSlot, {
     mkey: 'vis_' + ed.id,
     label: 'Picture for this piece',
-    h: 100,
-    hint: 'Square-ish images look best here. Save the piece first if it’s new.'
+    natural: true,
+    h: 120,
+    hint: 'Any photo works — it keeps its own shape. Save the piece first if it’s new.'
   }), /*#__PURE__*/React.createElement("div", {
     className: "navrow"
   }, /*#__PURE__*/React.createElement("button", {
@@ -2376,6 +2400,7 @@ function Player({
   const [i, setI] = useState(0);
   const [voice, setVoice] = useState(voiceDefault);
   const [paused, setPaused] = useState(false);
+  const [started, setStarted] = useState(false);
   const [mode, setMode] = useState('loading'); // loading | audio | speech
   const tRef = useRef(null);
   const stop = useRef(false);
@@ -2398,7 +2423,6 @@ function Player({
         };
         a.onended = () => { if (!stop.current) { setI(med.lines.length); } };
         audRef.current = a;
-        a.play().catch(() => {});
         setMode('audio');
       } else {
         setMode('speech');
@@ -2418,7 +2442,7 @@ function Player({
   }, []);
 
   useEffect(() => {
-    if (paused || stop.current || mode === 'loading') return;
+    if (!started || paused || stop.current || mode === 'loading') return;
     if (i >= med.lines.length) {
       tRef.current = setTimeout(() => { if (!stop.current) onClose(); }, 3000);
       return;
@@ -2454,8 +2478,32 @@ function Player({
       tRef.current = setTimeout(() => { if (!stop.current) setI(x => x + 1); }, lineMs(line, 1));
     }
     return () => clearTimeout(tRef.current);
-  }, [i, paused, voice, mode]);
+  }, [i, paused, voice, mode, started]);
 
+  function seekTo(n) {
+    const idx = Math.max(0, Math.min(med.lines.length - 1, n));
+    clearTimeout(tRef.current);
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+    if (mode === 'audio' && audRef.current) {
+      let ms = 0;
+      for (let k = 0; k < idx; k++) ms += lineMs(med.lines[k], scale.current);
+      try { audRef.current.currentTime = ms / 1000; } catch (e) {}
+    }
+    setI(idx);
+  }
+  function begin() {
+    setStarted(true);
+    setPaused(false);
+    if (mode === 'audio' && audRef.current) { try { audRef.current.play(); } catch (e) {} }
+  }
+  function restart() {
+    seekTo(0);
+    setPaused(false);
+    setStarted(true);
+    if (mode === 'audio' && audRef.current) {
+      try { audRef.current.currentTime = 0; audRef.current.play(); } catch (e) {}
+    }
+  }
   function togglePause() {
     const p = !paused;
     setPaused(p);
@@ -2487,35 +2535,43 @@ function Player({
     style: { animationDuration: lineMs(med.lines[i], mode === 'audio' ? scale.current : 1) + 'ms' }
   }), /*#__PURE__*/React.createElement("div", {
     className: "medctl"
-  }, /*#__PURE__*/React.createElement("button", {
+  }, !started ? /*#__PURE__*/React.createElement("button", {
+    className: "btn",
+    style: { background: 'rgba(255,255,255,.94)', color: 'var(--dark)', boxShadow: 'none', minWidth: 130 },
+    onClick: begin
+  }, "Start") : /*#__PURE__*/React.createElement("button", {
     className: "btn ghost sm",
-    style: {
-      color: '#fff',
-      borderColor: 'rgba(255,255,255,.3)'
-    },
+    style: { color: '#fff', borderColor: 'rgba(255,255,255,.3)', minWidth: 92 },
     onClick: togglePause
-  }, paused ? 'Resume' : 'Pause'), /*#__PURE__*/React.createElement("button", {
+  }, paused ? 'Resume' : 'Pause'), started && /*#__PURE__*/React.createElement("button", {
     className: "btn ghost sm",
-    style: {
-      color: '#fff',
-      borderColor: 'rgba(255,255,255,.3)'
-    },
+    style: { color: '#fff', borderColor: 'rgba(255,255,255,.3)' },
+    onClick: restart
+  }, "Restart"), /*#__PURE__*/React.createElement("button", {
+    className: "btn ghost sm",
+    style: { color: '#fff', borderColor: 'rgba(255,255,255,.3)' },
+    onClick: onClose
+  }, started ? "End" : "Close")), /*#__PURE__*/React.createElement("div", {
+    style: { marginTop: 16, display: 'flex', gap: 18, alignItems: 'center', justifyContent: 'center' }
+  }, started && /*#__PURE__*/React.createElement("button", {
+    className: "medstep",
+    onClick: () => seekTo(i - 1),
+    disabled: i <= 0,
+    "aria-label": "Back a line"
+  }, "◀  back"), /*#__PURE__*/React.createElement("button", {
+    className: "medstep",
     onClick: () => {
       const v = !voice;
       setVoice(v);
       onVoicePref && onVoicePref(v);
-      try {
-        window.speechSynthesis && window.speechSynthesis.cancel();
-      } catch (e) {}
+      try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
     }
-  }, mode === 'audio' ? 'Recorded voice' : (voice ? 'Voice off' : 'Voice on')), /*#__PURE__*/React.createElement("button", {
-    className: "btn ghost sm",
-    style: {
-      color: '#fff',
-      borderColor: 'rgba(255,255,255,.3)'
-    },
-    onClick: onClose
-  }, "End")));
+  }, mode === 'audio' ? 'recorded voice' : (voice ? 'voice off' : 'voice on')), started && /*#__PURE__*/React.createElement("button", {
+    className: "medstep",
+    onClick: () => seekTo(i + 1),
+    disabled: i >= med.lines.length - 1,
+    "aria-label": "Forward a line"
+  }, "skip  ▶")));
 }
 
 /* ============================ COMPANION ============================ */
