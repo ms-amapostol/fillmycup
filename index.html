@@ -1841,6 +1841,7 @@ function Today({
   const [aiBusy, setAiBusy] = useState(false);
   const [gratNudge, setGratNudge] = useState('');
   const [qSkip, setQSkip] = useState(0);
+  const [proofSkip, setProofSkip] = useState(0);
   const hasAI = !!db.settings.aiKey;
   async function askToday(){
     if(aiBusy) return;
@@ -1889,7 +1890,13 @@ function Today({
     });
     toast('Kept');
   }
-  const proof = db.cup.length ? db.cup[Math.floor(Math.random() * Math.min(db.cup.length, 12))] : null;
+  const proof = (() => {
+    const pool = db.cup.slice(0, 12);
+    if (!pool.length) return null;
+    let h = 0;
+    for (let k = 0; k < t.length; k++) h = (h * 31 + t.charCodeAt(k)) >>> 0;
+    return pool[(h + proofSkip) % pool.length];
+  })();
   const n = db.cup.length;
   return /*#__PURE__*/React.createElement("div", {
     className: "wrap"
@@ -2053,7 +2060,11 @@ function Today({
       textAlign: 'center',
       marginTop: 14
     }
-  }, /*#__PURE__*/React.createElement("button", {
+  }, db.cup.length > 1 && /*#__PURE__*/React.createElement("button", {
+    className: "btn ghost sm",
+    onClick: () => setProofSkip(k => k + 1),
+    style: { marginRight: 8 }
+  }, "Show me another"), /*#__PURE__*/React.createElement("button", {
     className: "btn ghost sm",
     onClick: () => go('cup')
   }, "Open the cup →"))), !proof && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
