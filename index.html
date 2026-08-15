@@ -691,17 +691,39 @@ function lineMs(line, scale){ return ((line[0].length * 0.085) + line[1]) * 1000
 function medUnits(m){ return m.lines.reduce(function(t,l){ return t + lineMs(l,1); }, 0); }
 
 const AUDIO_BASE = 'audio/';
+/* Where the audio folder sits, worked out from the page's own address so it
+   holds up whether the URL ends in a slash, a filename, or neither. */
+function audioUrls(id){
+  const out=[];
+  try{
+    const p = location.pathname || '/';
+    if(/\.[a-z0-9]+$/i.test(p))      out.push(p.replace(/[^/]*$/,'') + AUDIO_BASE + id + '.m4a');
+    else if(p.endsWith('/'))          out.push(p + AUDIO_BASE + id + '.m4a');
+    else                              out.push(p + '/' + AUDIO_BASE + id + '.m4a');
+  }catch(e){}
+  out.push(AUDIO_BASE + id + '.m4a');          // plain relative, for local files
+  return out.filter((v,i,a)=>a.indexOf(v)===i);
+}
+/* Last fetch attempt, kept so the app can tell you what it tried. */
+let LAST_AUDIO_TRY = null;
 async function remoteAudio(id){
   try{
     const cached = await mediaGet('cache_'+id);
     if(cached) return URL.createObjectURL(cached);
-    const r = await fetch(AUDIO_BASE + id + '.m4a', { cache:'force-cache' });
-    if(!r.ok) return null;
-    const b = await r.blob();
-    if(b.size < 2000) return null;
-    try{ await mediaPut('cache_'+id, b); }catch(e){}
-    return URL.createObjectURL(b);
-  }catch(e){ return null; }
+  }catch(e){}
+  for(const u of audioUrls(id)){
+    try{
+      LAST_AUDIO_TRY = u;
+      const r = await fetch(u);            // normal caching — never reuse a stale 404
+      if(!r.ok) continue;
+      const b = await r.blob();
+      if(b.size < 2000) continue;
+      if(b.type && b.type.indexOf('text') === 0) continue;   // a 404 page, not audio
+      try{ await mediaPut('cache_'+id, b); }catch(e){}
+      return URL.createObjectURL(b);
+    }catch(e){}
+  }
+  return null;
 }
 
 function builtinAudio(id){ const v=BUILTIN_AUDIO[id]; return (typeof v==='string'&&v.length>64)?v:null; }
@@ -2273,6 +2295,34 @@ function pickVoice(pref){
   }catch(e){ return null; }
 }
 
+function RecordingCheck(){
+  const [state,setState]=useState(null);   // null | 'busy' | {found, missing, tried}
+  async function run(){
+    setState('busy');
+    const found=[], missing=[];
+    for(const m of MEDS){
+      let ok=false;
+      for(const u of audioUrls(m.id)){
+        try{ const r=await fetch(u,{method:'HEAD'});
+          if(r.ok && (r.headers.get('content-type')||'').indexOf('text')!==0){ ok=true; break; }
+        }catch(e){}
+      }
+      (ok?found:missing).push(m.id);
+    }
+    setState({found,missing,tried:audioUrls('example')[0]});
+  }
+  return React.createElement('div',null,
+    React.createElement('label',{className:'field'},'Recorded sessions'),
+    React.createElement('button',{className:'btn ghost sm',disabled:state==='busy',onClick:run},
+      state==='busy'?'Checking…':'Check for recordings'),
+    state&&state!=='busy'&&React.createElement('div',{className:'hint',style:{marginTop:10}},
+      state.found.length+' of '+MEDS.length+' found.'+
+      (state.found.length?' Recorded: '+state.found.join(', ')+'.':'')+
+      (state.found.length===0?' Looked in '+state.tried+' — if your files are somewhere else, that is the mismatch.':'')
+    )
+  );
+}
+
 function VoiceRoom({db,save,toast,onClose}){
   const [voices,setVoices]=useState([]);
   useEffect(()=>{
@@ -2296,6 +2346,8 @@ function VoiceRoom({db,save,toast,onClose}){
       React.createElement('h3',{className:'display',style:{fontSize:22,fontWeight:600,margin:'2px 0 6px'}},'How it reads to you'),
       React.createElement('p',{className:'serif muted',style:{fontSize:15,margin:'0 0 14px'}},
         'Most sessions are read in a real voice. Where one hasn’t been recorded yet, your device reads it instead — you can choose which voice it uses, or turn the voice off during a session and simply follow the words and the circle.'),
+      React.createElement(RecordingCheck,{}),
+      React.createElement('div',{className:'rule'}),
       React.createElement('label',{className:'field'},'Device voice'),
       React.createElement('select',{value:db.settings.voiceURI||'',
         onChange:e=>save({...db,settings:{...db.settings,voiceURI:e.target.value}})},
@@ -2491,6 +2543,13 @@ function Player({
     return () => clearTimeout(tRef.current);
   }, [i, paused, voice, mode, started]);
 
+  /* start audio when both are ready */
+  useEffect(() => {
+    if (started && !paused && mode === 'audio' && audRef.current && audRef.current.paused) {
+      try { audRef.current.play(); } catch (e) {}
+    }
+  }, [started, paused, mode]);
+
   function seekTo(n) {
     const idx = Math.max(0, Math.min(med.lines.length - 1, n));
     clearTimeout(tRef.current);
@@ -2549,8 +2608,9 @@ function Player({
   }, !started ? /*#__PURE__*/React.createElement("button", {
     className: "btn",
     style: { background: 'rgba(255,255,255,.94)', color: 'var(--dark)', boxShadow: 'none', minWidth: 130 },
-    onClick: begin
-  }, "Start") : /*#__PURE__*/React.createElement("button", {
+    onClick: begin,
+    disabled: mode === 'loading'
+  }, mode === 'loading' ? "Loading…" : "Start") : /*#__PURE__*/React.createElement("button", {
     className: "btn ghost sm",
     style: { color: '#fff', borderColor: 'rgba(255,255,255,.3)', minWidth: 92 },
     onClick: togglePause
