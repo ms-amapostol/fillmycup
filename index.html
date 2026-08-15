@@ -1521,7 +1521,7 @@ function Intake({
     className: "ask"
   }, "Meet Grace."), /*#__PURE__*/React.createElement("p", {
     className: "why"
-  }, "Grace drifts around the corner of the screen, notices things, and asks you a question now and then. She’s quiet by default — tap her whenever you want, ignore her when you don’t. She’s named for the thing that runs ahead of us."), /*#__PURE__*/React.createElement("p", {
+  }, "Grace drifts around the corner of the screen, notices things, and asks you a question now and then. She’s quiet by nature — tap her whenever you’d like her, and let her float when you’d rather have the room to yourself. She’s named for the thing that runs ahead of us."), /*#__PURE__*/React.createElement("p", {
     className: "why"
   }, "She’s not a substitute for people. Part of her job is nudging you toward the actual humans in your life."), /*#__PURE__*/React.createElement("label", {
     className: "field"
@@ -1936,6 +1936,55 @@ function VisionThumb({v}){
     !url&&React.createElement('span',{style:{color:'rgba(255,255,255,.9)'}},TINTS[(v.tint||0)%TINTS.length][1]));
 }
 
+function LookingBack({db,save,toast}){
+  const [open,setOpen]=useState(false);
+  const t=today();
+  const days=(db.gratitude||[])
+    .filter(g=>g.date!==t && (g.items||[]).some(x=>x&&x.trim()))
+    .sort((a,b)=>b.date.localeCompare(a.date));
+  const answers=db.answers||[];
+  const [show,setShow]=useState(14);
+  if(!days.length) return null;
+
+  function keep(text){
+    save({...db,cup:[{id:uid('c'),date:new Date().toISOString(),when:'Noticed',text:text,note:''},...db.cup]});
+    toast('Kept in your cup');
+  }
+  function pretty(d){
+    const [y,m,dd]=d.split('-').map(Number);
+    return new Date(y,m-1,dd).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+  }
+  return React.createElement('div',{style:{marginTop:26}},
+    React.createElement('button',{onClick:()=>setOpen(v=>!v),
+      style:{background:'none',border:'none',padding:0,color:'var(--acc-deep)',fontWeight:700,fontSize:13,fontFamily:'inherit'}},
+      (open?'Earlier days  ▾':'Earlier days  ▸')+'   ('+days.length+')'),
+    open&&React.createElement('div',{className:'settle',style:{marginTop:12}},
+      days.slice(0,show).map(g=>{
+        const a=answers.find(x=>x.date===g.date);
+        return React.createElement('div',{key:g.date,
+          style:{padding:'13px 0',borderBottom:'1px solid var(--line)'}},
+          React.createElement('div',{style:{fontSize:11.5,fontWeight:700,color:'var(--acc-deep)',marginBottom:6}},pretty(g.date)),
+          (g.items||[]).filter(x=>x&&x.trim()).map((it,k)=>
+            React.createElement('div',{key:k,style:{display:'flex',gap:10,alignItems:'flex-start',padding:'3px 0'}},
+              React.createElement('span',{style:{fontSize:11,color:'var(--spark-deep)',fontWeight:700,flex:'none',paddingTop:3}},'0'+(k+1)),
+              React.createElement('span',{style:{fontSize:14.5,flex:1,lineHeight:1.5}},it),
+              React.createElement('button',{title:'Keep this in your cup',onClick:()=>keep(it),
+                style:{background:'none',border:'none',color:'var(--ink-faint)',fontSize:15,padding:'0 4px',flex:'none'}},'＋')
+            )),
+          a&&a.a&&React.createElement('div',{style:{marginTop:8,paddingLeft:2,borderLeft:'2px solid var(--line)'}},
+            React.createElement('div',{style:{paddingLeft:11}},
+              React.createElement('div',{className:'serif',style:{fontSize:13.5,fontStyle:'italic',color:'var(--ink-faint)'}},a.q),
+              React.createElement('div',{className:'serif',style:{fontSize:15,color:'var(--ink-soft)',marginTop:2}},a.a)))
+        );
+      }),
+      days.length>show&&React.createElement('button',{className:'btn ghost sm',style:{marginTop:14},
+        onClick:()=>setShow(n=>n+30)},'Show more'),
+      React.createElement('p',{className:'muted',style:{fontSize:12.5,marginTop:14,lineHeight:1.55}},
+        'Tap ＋ beside anything to keep it in your cup permanently.')
+    )
+  );
+}
+
 function Today({
   db,
   save,
@@ -2189,7 +2238,7 @@ function Today({
     }
   }), /*#__PURE__*/React.createElement("div", {
     className: "hint"
-  }, "Your cup is empty. Even one entry changes what this screen can do for you — tap ", /*#__PURE__*/React.createElement("b", null, "The Cup"), " below.")));
+  }, "Your cup is empty. Even one entry changes what this screen can do for you — tap ", /*#__PURE__*/React.createElement("b", null, "The Cup"), " below.")), /*#__PURE__*/React.createElement(LookingBack, { db: db, save: save, toast: toast }));
 }
 
 /* ============================ VISION ============================ */
@@ -2928,7 +2977,7 @@ Reply as their companion — warm, brief, real. If they're spiralling, help them
 }
 function pickNudge(db) {
   if (!(db.companion && db.companion.metGrace)) {
-    return 'Hi — I’m ' + ((db.companion && db.companion.name) || 'Grace') + '. I live down here. Tap me any time, or ignore me entirely.';
+    return 'Hi — I’m ' + ((db.companion && db.companion.name) || 'Grace') + '. I’ll be right here, keeping you company. Tap me whenever you’d like, and let me float when you’d rather just be.';
   }
   const n = db.cup.length,
     t = today();
@@ -3435,6 +3484,26 @@ If you notice a pattern that clearly predates this app, or distress that keeps r
 }
 
 
+class ViewGuard extends React.Component {
+  constructor(p){ super(p); this.state={err:null}; }
+  static getDerivedStateFromError(err){ return {err:err}; }
+  componentDidUpdate(prev){ if(prev.viewKey!==this.props.viewKey && this.state.err) this.setState({err:null}); }
+  render(){
+    if(!this.state.err) return this.props.children;
+    return React.createElement('div',{className:'wrap',style:{paddingTop:40}},
+      React.createElement('span',{className:'eyebrow'},'Something went wrong'),
+      React.createElement('h2',{className:'display',style:{fontSize:24,fontWeight:600,margin:'6px 0 8px'}},
+        'This page didn’t open properly.'),
+      React.createElement('p',{className:'serif muted',style:{fontSize:16,lineHeight:1.6}},
+        'Nothing you’ve written is affected — it’s all still saved on this device. Try another tab, or reload the page.'),
+      React.createElement('button',{className:'btn',style:{marginTop:12},
+        onClick:()=>{ try{ location.reload(); }catch(e){} }},'Reload'),
+      React.createElement('p',{className:'muted',style:{fontSize:11.5,marginTop:16,fontFamily:'monospace'}},
+        String(this.state.err && this.state.err.message || this.state.err))
+    );
+  }
+}
+
 function App() {
   const [db, setDb] = useState(() => load() || blank());
   const [view, setView] = useState('today');
@@ -3492,7 +3561,7 @@ function App() {
     key: k,
     className: view === k ? 'on' : '',
     onClick: () => setView(k)
-  }, l)))), view === 'today' && /*#__PURE__*/React.createElement(Today, {
+  }, l)))), /*#__PURE__*/React.createElement(ViewGuard, { viewKey: view }, view === 'today' && /*#__PURE__*/React.createElement(Today, {
     db: db,
     save: save,
     toast: toast,
@@ -3524,7 +3593,7 @@ function App() {
       setView('today');
       toast('Reset');
     }
-  }), /*#__PURE__*/React.createElement(Companion, {
+  })), /*#__PURE__*/React.createElement(Companion, {
     db: db,
     save: save,
     go: setView,
