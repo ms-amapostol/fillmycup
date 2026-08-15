@@ -891,7 +891,10 @@ function load() {
   return null;
 }
 const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
 const fmt = d => new Date(d).toLocaleDateString(undefined, {
   month: 'short',
   day: 'numeric',
@@ -1970,52 +1973,107 @@ function VisionThumb({v}){
     !url&&React.createElement('span',{style:{color:'rgba(255,255,255,.9)'}},TINTS[(v.tint||0)%TINTS.length][1]));
 }
 
+const RECENT_DAYS = 7;
+function prettyDay(d){
+  const [y,m,dd]=d.split('-').map(Number);
+  return new Date(y,m-1,dd).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+}
+function monthLabel(d){
+  const [y,m]=d.split('-').map(Number);
+  return new Date(y,m-1,1).toLocaleDateString(undefined,{month:'long',year:'numeric'});
+}
+
+function GratitudeArchive({db,save,toast,onClose}){
+  const days=(db.gratitude||[]).filter(g=>(g.items||[]).some(x=>x&&x.trim()))
+    .sort((a,b)=>b.date.localeCompare(a.date));
+  const answers=db.answers||[];
+  const months=[];
+  days.forEach(g=>{
+    const k=g.date.slice(0,7);
+    let grp=months.find(x=>x.k===k);
+    if(!grp){ grp={k:k,label:monthLabel(g.date),days:[]}; months.push(grp); }
+    grp.days.push(g);
+  });
+  function keep(text){
+    save({...db,cup:[{id:uid('c'),date:new Date().toISOString(),when:'Noticed',text:text,note:''},...db.cup]});
+    toast('Kept in your cup');
+  }
+  const total=days.reduce((n,g)=>n+(g.items||[]).filter(x=>x&&x.trim()).length,0);
+  return React.createElement('div',{className:'sheet',onClick:onClose},
+    React.createElement('div',{className:'sheetin settle',onClick:e=>e.stopPropagation()},
+      React.createElement('div',{className:'grab'}),
+      React.createElement('span',{className:'eyebrow'},'Everything you’ve noticed'),
+      React.createElement('h3',{className:'display',style:{fontSize:23,fontWeight:600,margin:'2px 0 4px'}},
+        total+' things, across '+days.length+' days'),
+      React.createElement('p',{className:'serif muted',style:{fontSize:15,margin:'0 0 16px'}},
+        'Nothing here is ever deleted. Tap ＋ beside anything to keep it in your cup.'),
+      months.map(mo=>React.createElement('div',{key:mo.k,style:{marginBottom:18}},
+        React.createElement('div',{style:{fontSize:11,letterSpacing:'.16em',textTransform:'uppercase',
+          fontWeight:700,color:'var(--acc-deep)',margin:'0 0 8px'}},mo.label),
+        mo.days.map(g=>React.createElement('div',{key:g.date,
+          style:{padding:'11px 0',borderBottom:'1px solid var(--line)'}},
+          React.createElement('div',{style:{fontSize:11.5,fontWeight:700,color:'var(--ink-faint)',marginBottom:5}},prettyDay(g.date)),
+          (g.items||[]).filter(x=>x&&x.trim()).map((it,k)=>
+            React.createElement('div',{key:k,style:{display:'flex',gap:9,alignItems:'flex-start',padding:'3px 0'}},
+              React.createElement('span',{style:{fontSize:14.5,flex:1,lineHeight:1.5}},it),
+              React.createElement('button',{title:'Keep this in your cup',onClick:()=>keep(it),
+                style:{background:'none',border:'none',color:'var(--ink-faint)',fontSize:15,padding:'0 2px',flex:'none',cursor:'pointer'}},'＋')
+            )),
+          (function(){ const a=answers.find(x=>x.date===g.date);
+            return a&&a.a&&React.createElement('div',{style:{marginTop:6,paddingLeft:11,borderLeft:'2px solid var(--line)'}},
+              React.createElement('div',{className:'serif',style:{fontSize:13,fontStyle:'italic',color:'var(--ink-faint)'}},a.q),
+              React.createElement('div',{className:'serif',style:{fontSize:14.5,color:'var(--ink-soft)',marginTop:2}},a.a)); })()
+        ))
+      )),
+      React.createElement('button',{className:'btn wide',style:{marginTop:8},onClick:onClose},'Close')
+    )
+  );
+}
+
 function LookingBack({db,save,toast}){
   const [open,setOpen]=useState(false);
+  const [archive,setArchive]=useState(false);
   const t=today();
   const days=(db.gratitude||[])
     .filter(g=>g.date!==t && (g.items||[]).some(x=>x&&x.trim()))
     .sort((a,b)=>b.date.localeCompare(a.date));
   const answers=db.answers||[];
-  const [show,setShow]=useState(14);
   if(!days.length) return null;
+  const recent=days.slice(0,RECENT_DAYS);
 
   function keep(text){
     save({...db,cup:[{id:uid('c'),date:new Date().toISOString(),when:'Noticed',text:text,note:''},...db.cup]});
     toast('Kept in your cup');
   }
-  function pretty(d){
-    const [y,m,dd]=d.split('-').map(Number);
-    return new Date(y,m-1,dd).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
-  }
   return React.createElement('div',{style:{marginTop:26}},
     React.createElement('button',{onClick:()=>setOpen(v=>!v),
       style:{background:'none',border:'none',padding:0,color:'var(--acc-deep)',fontWeight:700,fontSize:13,fontFamily:'inherit'}},
-      (open?'Earlier days  ▾':'Earlier days  ▸')+'   ('+days.length+')'),
+      (open?'This past week  \u25be':'This past week  \u25b8')+'   ('+recent.length+')'),
     open&&React.createElement('div',{className:'settle',style:{marginTop:12}},
-      days.slice(0,show).map(g=>{
+      recent.map(g=>{
         const a=answers.find(x=>x.date===g.date);
         return React.createElement('div',{key:g.date,
           style:{padding:'13px 0',borderBottom:'1px solid var(--line)'}},
-          React.createElement('div',{style:{fontSize:11.5,fontWeight:700,color:'var(--acc-deep)',marginBottom:6}},pretty(g.date)),
+          React.createElement('div',{style:{fontSize:11.5,fontWeight:700,color:'var(--acc-deep)',marginBottom:6}},prettyDay(g.date)),
           (g.items||[]).filter(x=>x&&x.trim()).map((it,k)=>
             React.createElement('div',{key:k,style:{display:'flex',gap:10,alignItems:'flex-start',padding:'3px 0'}},
               React.createElement('span',{style:{fontSize:11,color:'var(--spark-deep)',fontWeight:700,flex:'none',paddingTop:3}},'0'+(k+1)),
               React.createElement('span',{style:{fontSize:14.5,flex:1,lineHeight:1.5}},it),
               React.createElement('button',{title:'Keep this in your cup',onClick:()=>keep(it),
-                style:{background:'none',border:'none',color:'var(--ink-faint)',fontSize:15,padding:'0 4px',flex:'none'}},'＋')
+                style:{background:'none',border:'none',color:'var(--ink-faint)',fontSize:15,padding:'0 4px',flex:'none',cursor:'pointer'}},'\uFF0B')
             )),
-          a&&a.a&&React.createElement('div',{style:{marginTop:8,paddingLeft:2,borderLeft:'2px solid var(--line)'}},
-            React.createElement('div',{style:{paddingLeft:11}},
-              React.createElement('div',{className:'serif',style:{fontSize:13.5,fontStyle:'italic',color:'var(--ink-faint)'}},a.q),
-              React.createElement('div',{className:'serif',style:{fontSize:15,color:'var(--ink-soft)',marginTop:2}},a.a)))
+          a&&a.a&&React.createElement('div',{style:{marginTop:8,paddingLeft:11,borderLeft:'2px solid var(--line)'}},
+            React.createElement('div',{className:'serif',style:{fontSize:13.5,fontStyle:'italic',color:'var(--ink-faint)'}},a.q),
+            React.createElement('div',{className:'serif',style:{fontSize:15,color:'var(--ink-soft)',marginTop:2}},a.a))
         );
       }),
-      days.length>show&&React.createElement('button',{className:'btn ghost sm',style:{marginTop:14},
-        onClick:()=>setShow(n=>n+30)},'Show more'),
-      React.createElement('p',{className:'muted',style:{fontSize:12.5,marginTop:14,lineHeight:1.55}},
-        'Tap ＋ beside anything to keep it in your cup permanently.')
-    )
+      React.createElement('div',{style:{display:'flex',gap:10,alignItems:'center',marginTop:14,flexWrap:'wrap'}},
+        days.length>RECENT_DAYS&&React.createElement('button',{className:'btn ghost sm',
+          onClick:()=>setArchive(true)},'All '+days.length+' days \u2192')),
+      React.createElement('p',{className:'muted',style:{fontSize:12.5,marginTop:12,lineHeight:1.55}},
+        'The last seven days stay here. Everything before that is kept safe in the archive \u2014 tap \uFF0B beside anything to move it into your cup for good.')
+    ),
+    archive&&React.createElement(GratitudeArchive,{db:db,save:save,toast:toast,onClose:()=>setArchive(false)})
   );
 }
 
