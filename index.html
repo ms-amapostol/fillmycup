@@ -29,22 +29,26 @@
   html{transition:background .9s ease}
   body{transition:background .9s ease,color .9s ease}
   [data-tod="dawn"]{
-    --paper:#F4EFE9; --paper-2:#EAE2DA; --card:#FDFAF6; --line:#E0D6CB;
+    --paper:#F6EDE8; --paper-2:#EDDFD8; --card:#FEFAF7; --line:#E3D3C9;
+    --acc:#7C86AE; --acc-lt:#B6B9D4; --acc-deep:#5F6A93; --acc-soft:rgba(124,134,174,.12);
     --sky1:#E9DCE9; --sky2:#F7E3D2;
   }
   [data-tod="morning"]{
     --paper:#F1EFE7; --paper-2:#E7E4D9; --card:#FBFAF5; --line:#DEDACD;
   }
   [data-tod="midday"]{
-    --paper:#EFF1EE; --paper-2:#E3E7E2; --card:#FBFCFA; --line:#D9DED8;
+    --paper:#ECF1F3; --paper-2:#DDE6E9; --card:#FAFDFE; --line:#D2DDE1;
+    --acc:#4A90B8; --acc-deep:#31749B;
   }
   [data-tod="after"]{
-    --paper:#F5EFE3; --paper-2:#EBE2D0; --card:#FDF9F0; --line:#E1D6C1;
+    --paper:#F8EEDD; --paper-2:#EFE0C8; --card:#FEFAF2; --line:#E5D6BA;
+    --acc:#B98450; --acc-lt:#E0BE93; --acc-deep:#96683A; --acc-soft:rgba(185,132,80,.13);
     --sky1:#F5E3CE; --sky2:#E3E7DC;
   }
   [data-tod="dusk"]{
-    --paper:#EFEAE7; --paper-2:#E4DCD9; --card:#FBF7F5; --line:#DCD1CD;
-    --ink:#2C333C; --ink-soft:#5F6873;
+    --paper:#EFE7E9; --paper-2:#E3D7DB; --card:#FBF6F7; --line:#DBCBD1;
+    --ink:#2E2F3C; --ink-soft:#63637A;
+    --acc:#8A7099; --acc-lt:#C0AECB; --acc-deep:#6C5480; --acc-soft:rgba(138,112,153,.13);
   }
   [data-tod="night"]{
     --paper:#16202A; --paper-2:#1E2A36; --card:#1F2C38; --line:#2E3E4C;
@@ -60,7 +64,7 @@
   [data-tod="night"] .panel h4{color:var(--ink)}
   [data-tod="night"] .medcard .tx b{color:var(--ink)}
   [data-tod="night"]{--sky1:#22303F; --sky2:#2C3B45}
-  [data-tod="night"] .light h2{color:#fff}
+  [data-tod="night"] .light h2, [data-tod="night"] .banner h2{color:#fff}
   [data-tod="night"] .medcard::before{opacity:.13}
   [data-tod="night"] .med::before{opacity:.13}
   [data-tod="night"] .prompt{background:linear-gradient(160deg,#24384A,#16232F);border:1px solid #2E3E4C}
@@ -130,6 +134,15 @@
   .nav::-webkit-scrollbar{display:none}.nav button{flex:none;white-space:nowrap}@media(max-width:420px){.nav{gap:15px;justify-content:flex-start}.nav button{font-size:12.5px}.brand h1{font-size:18px}}
 
   /* light band */
+
+  /* the light band, shared by every page except Still */
+  .banner{position:relative;height:168px;padding:0 20px 16px;display:flex;align-items:flex-end;overflow:hidden;
+    transition:background .9s ease}
+  .banner .sun{position:absolute;width:130px;height:130px;border-radius:50%;top:-38px;right:-18px;
+    background:radial-gradient(circle,rgba(255,255,255,.92),rgba(255,255,255,0) 68%)}
+  .banner .tod{position:absolute;top:15px;left:20px;font-size:9.5px;letter-spacing:.19em;text-transform:uppercase;font-weight:700;opacity:.62}
+  .banner h2{position:relative;font-family:'Fraunces',serif;font-size:27px;font-weight:600;line-height:1.14;letter-spacing:-.018em;margin:0}
+  .banner h2 em{display:block;font-family:'Spectral',serif;font-style:italic;font-weight:400;font-size:21px;margin-top:4px;opacity:.86}
   .light{position:relative;height:162px;margin:0 -20px 18px;padding:0 20px 16px;display:flex;align-items:flex-end;overflow:hidden}
   .light .sun{position:absolute;width:130px;height:130px;border-radius:50%;top:-38px;right:-18px;
     background:radial-gradient(circle,rgba(255,255,255,.92),rgba(255,255,255,0) 68%)}
@@ -266,6 +279,25 @@
     }
     .nav button:hover{background:rgba(255,255,255,.07); color:rgba(255,255,255,.85)}
     .nav button.on{background:rgba(255,255,255,.13); color:#fff; border-bottom:none}
+
+
+    /* settings sits at the foot of the rail */
+    .tb-row{display:contents}
+    .topbar .brand{order:1}
+    .topbar .nav{order:2}
+    .topbar .tb-r{order:3;margin-top:auto;padding-top:22px;justify-self:start}
+
+    /* the whole cup header travels together */
+    .view-cup > .cuphead{grid-column:1;position:sticky;top:34px;padding-top:26px}
+    .view-cup > .cupwrap,
+    .view-cup > .btn.warm,
+    .view-cup > .cupabout{grid-column:auto}
+
+    /* the shared banner spans the content area */
+    .banner{height:230px;padding:0 40px 24px;margin:0}
+    .banner .tod{left:40px;top:20px}
+    .banner h2{font-size:34px}
+    .banner h2 em{font-size:25px}
 
     /* room to breathe */
     .wrap{max-width:1120px; padding:0 40px 120px; margin:0 auto}
@@ -1733,6 +1765,8 @@ function CupView({
   return /*#__PURE__*/React.createElement("div", {
     className: "wrap settle view-cup"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "cuphead"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "cupwrap",
     style: {
       marginTop: 20
@@ -1769,7 +1803,7 @@ function CupView({
        /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 15.5, lineHeight: 1.6, margin: 0, color: 'var(--ink-soft)' } },
          "Then, on the days the dread arrives, come here and read before you check anything. That’s what it’s for. The level only ever rises — there’s nothing to keep up and no way to fall behind.")
      )
-  ), /*#__PURE__*/React.createElement("div", {
+  )), /*#__PURE__*/React.createElement("div", {
     className: "rule"
   }), /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
@@ -1993,7 +2027,6 @@ function Today({
   go
 }) {
   const p = db.profile;
-  const skyUrl = useMedia('sky_' + tod.k);
   const t = today();
   const g = db.gratitude.find(x => x.date === t) || {
     date: t,
@@ -2029,6 +2062,11 @@ function Today({
     return (s + qSkip) % QUESTIONS.length;
   })();
   const q = ansToday && ansToday.q ? ansToday.q : own && ownQ ? ownQ : aiQ ? aiQ : QUESTIONS[qIdx];
+  function keepToday(text) {
+    if (!text || !text.trim()) return;
+    save({ ...db, cup: [{ id: uid('c'), date: new Date().toISOString(), when: 'Noticed', text: text.trim(), note: '' }, ...db.cup] });
+    toast('Kept in your cup');
+  }
   function setG(i, v) {
     const items = [...g.items];
     items[i] = v;
@@ -2066,23 +2104,6 @@ function Today({
   return /*#__PURE__*/React.createElement("div", {
     className: "wrap view-today"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "light",
-    style: {
-      background: skyUrl
-        ? ('linear-gradient(178deg,rgba(255,255,255,0) 28%,' + (tod.dark?'rgba(22,34,44,.86)':'rgba(255,255,255,.80)') + '), url(' + skyUrl + ') center/cover')
-        : ('linear-gradient(158deg,' + tod.s1 + ',' + tod.s2 + ')'),
-      color: tod.dark ? '#fff' : 'var(--dark)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "sun",
-    style: {
-      opacity: skyUrl ? 0 : (tod.dark ? .25 : 1)
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "tod"
-  }, tod.label), /*#__PURE__*/React.createElement("h2", {
-    className: "settle"
-  }, tod.greet, ", ", p.name, ".", /*#__PURE__*/React.createElement("em", null, n > 0 ? 'There is room today.' : 'Let’s begin.'))), /*#__PURE__*/React.createElement("div", {
     className: "card settle",
     style: {
       padding: '18px 19px',
@@ -2194,7 +2215,12 @@ function Today({
       borderRadius: 0,
       fontSize: 14.5
     }
-  })))), proof && /*#__PURE__*/React.createElement("div", { className: "proofcol" }, /*#__PURE__*/React.createElement("div", {
+  }), (g.items[i] || '').trim() && /*#__PURE__*/React.createElement("button", {
+    title: "Keep this in your cup",
+    aria: "Keep this in your cup",
+    onClick: () => keepToday(g.items[i]),
+    style: { background: 'none', border: 'none', color: 'var(--ink-faint)', fontSize: 15, padding: '0 2px', flex: 'none', cursor: 'pointer' }
+  }, "＋")))), proof && /*#__PURE__*/React.createElement("div", { className: "proofcol" }, /*#__PURE__*/React.createElement("div", {
     style: {
       height: 16
     }
@@ -3484,6 +3510,31 @@ If you notice a pattern that clearly predates this app, or distress that keeps r
 }
 
 
+const PAGE_TITLE = {
+  cup:     ['The Cup',  'Every time there was enough.'],
+  journal: ['Journal',  'Somewhere longer to think out loud.'],
+  vision:  ['Vision',   'The life you’re praying toward.'],
+  settings:['Settings', '']
+};
+function Banner({tod,view,name}){
+  const url = useMedia('sky_' + tod.k);
+  const t = PAGE_TITLE[view];
+  const veil = tod.dark ? 'rgba(22,34,44,.86)' : 'rgba(255,255,255,.80)';
+  return React.createElement('div',{className:'banner',
+    style:{
+      background: url
+        ? ('linear-gradient(178deg,rgba(255,255,255,0) 26%,'+veil+'), url('+url+') center/cover')
+        : ('linear-gradient(158deg,'+tod.s1+','+tod.s2+')'),
+      color: tod.dark ? '#fff' : 'var(--dark)'
+    }},
+    !url && React.createElement('div',{className:'sun'}),
+    React.createElement('div',{className:'tod'},tod.label),
+    React.createElement('h2',{className:'settle'},
+      t ? t[0] : (tod.greet + ', ' + name + '.'),
+      React.createElement('em',null, t ? t[1] : 'There is room today.'))
+  );
+}
+
 class ViewGuard extends React.Component {
   constructor(p){ super(p); this.state={err:null}; }
   static getDerivedStateFromError(err){ return {err:err}; }
@@ -3561,7 +3612,9 @@ function App() {
     key: k,
     className: view === k ? 'on' : '',
     onClick: () => setView(k)
-  }, l)))), /*#__PURE__*/React.createElement(ViewGuard, { viewKey: view }, view === 'today' && /*#__PURE__*/React.createElement(Today, {
+  }, l)))), view !== 'still' && /*#__PURE__*/React.createElement(Banner, {
+    tod: tod, view: view, name: db.profile.name
+  }), /*#__PURE__*/React.createElement(ViewGuard, { viewKey: view }, view === 'today' && /*#__PURE__*/React.createElement(Today, {
     db: db,
     save: save,
     toast: toast,
