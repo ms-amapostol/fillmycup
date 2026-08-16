@@ -2032,6 +2032,19 @@ function VisionThumb({v}){
 }
 
 const RECENT_DAYS = 7;
+/* every day that has anything on it — three things, an answer, or both */
+function allDays(db){
+  const m={};
+  (db.gratitude||[]).forEach(g=>{
+    if((g.items||[]).some(x=>x&&x.trim())) m[g.date]={date:g.date,items:g.items};
+  });
+  (db.answers||[]).forEach(a=>{
+    if(a.a&&a.a.trim()){
+      if(!m[a.date]) m[a.date]={date:a.date,items:[]};
+    }
+  });
+  return Object.keys(m).map(k=>m[k]);
+}
 function prettyDay(d){
   const [y,m,dd]=d.split('-').map(Number);
   return new Date(y,m-1,dd).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
@@ -2042,9 +2055,8 @@ function monthLabel(d){
 }
 
 function GratitudeArchive({db,save,toast,onClose}){
-  const days=(db.gratitude||[]).filter(g=>(g.items||[]).some(x=>x&&x.trim()))
-    .sort((a,b)=>b.date.localeCompare(a.date));
   const answers=db.answers||[];
+  const days=allDays(db).sort((a,b)=>b.date.localeCompare(a.date));
   const months=[];
   days.forEach(g=>{
     const k=g.date.slice(0,7);
@@ -2092,9 +2104,7 @@ function LookingBack({db,save,toast}){
   const [open,setOpen]=useState(false);
   const [archive,setArchive]=useState(false);
   const t=today();
-  const days=(db.gratitude||[])
-    .filter(g=>g.date!==t && (g.items||[]).some(x=>x&&x.trim()))
-    .sort((a,b)=>b.date.localeCompare(a.date));
+  const days=allDays(db).filter(g=>g.date!==t).sort((a,b)=>b.date.localeCompare(a.date));
   const answers=db.answers||[];
   if(!days.length) return null;
   const recent=days.slice(0,RECENT_DAYS);
@@ -2272,7 +2282,9 @@ function Today({
     className: "btn sm",
     disabled: !ans.trim(),
     onClick: saveAns
-  }, "Keep it"), !ansToday && /*#__PURE__*/React.createElement("button", {
+  }, ansToday ? "Save changes" : "Keep it"), ansToday && /*#__PURE__*/React.createElement("span", {
+    style: { fontSize: 12, color: 'var(--acc-lt)', fontWeight: 600 }
+  }, "kept for today"), !ansToday && /*#__PURE__*/React.createElement("button", {
     className: "skip",
     style: {
       color: 'var(--acc-lt)'
@@ -2286,7 +2298,24 @@ function Today({
     className: "skip",
     style: { color: 'var(--acc-lt)', opacity: hasAI ? 1 : .7 },
     onClick: () => { if (!hasAI) { toast('Add an AI key in Settings and Grace can write these for you'); return; } askToday(); }
-  }, aiBusy ? 'Thinking…' : '✨ One for today')), !ansToday && /*#__PURE__*/React.createElement("div", {
+  }, aiBusy ? 'Thinking…' : '✨ One for today')), ansToday && ansToday.a && /*#__PURE__*/React.createElement("div", {
+    style: { marginTop: 13, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.12)', display: 'flex', gap: 10, alignItems: 'flex-start' }
+  }, /*#__PURE__*/React.createElement("div", { style: { flex: 1 } },
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontSize: 10.5, letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--acc-lt)', marginBottom: 4 }
+      }, "kept today"),
+      /*#__PURE__*/React.createElement("div", {
+        className: "serif",
+        style: { fontSize: 15.5, lineHeight: 1.55, color: 'rgba(255,255,255,.88)' }
+      }, ansToday.a),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontSize: 12, color: 'rgba(255,255,255,.5)', marginTop: 6 }
+      }, "You’ll find this again under ‘This past week’.")),
+    /*#__PURE__*/React.createElement("button", {
+      title: "Keep this in your cup",
+      onClick: () => keepToday(ansToday.a),
+      style: { background: 'none', border: 'none', color: 'var(--acc-lt)', fontSize: 16, cursor: 'pointer', flex: 'none', padding: '0 2px' }
+    }, "＋")), !ansToday && /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 13, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.12)' }
   }, [['', 'Anything'], ['gratitude', 'Something to be glad for'], ['scarcity', 'About having enough'], ['present', 'Being here'], ['growth', 'How I’m growing'], ['vision', 'Where I’m going']].map(function (kv) {
     var on = qKind === kv[0];
