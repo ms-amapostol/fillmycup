@@ -237,6 +237,20 @@
     box-shadow:0 10px 28px rgba(47,74,85,.16);transition:right .9s, bottom .9s}
   .bub b{color:var(--acc-deep)}
 
+
+  /* Grace steps aside while you're writing */
+  .pal{transition:right .9s cubic-bezier(.3,.7,.3,1), bottom .9s cubic-bezier(.3,.7,.3,1), transform .25s, opacity .25s}
+  .pal.away{opacity:0;transform:scale(.6) translateY(10px);pointer-events:none}
+
+  /* her room: a scrolling thread with the writing box pinned under it */
+  .graceroom{display:flex;flex-direction:column;max-height:86vh}
+  .gracethread{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 0 4px;min-height:0}
+  .graceinput{flex:none;padding-top:10px;border-top:1px solid var(--line);background:var(--paper)}
+  @media (max-width:999px){
+    .graceroom{max-height:88vh}
+    .gracethread{max-height:52vh}
+    .pal{width:50px;height:50px}
+  }
   .sheet{position:fixed;inset:0;z-index:80;background:rgba(43,58,64,.42);display:flex;align-items:flex-end;justify-content:center}
   .sheetin{background:var(--paper);border-radius:22px 22px 0 0;width:100%;max-width:640px;
     padding:22px 22px calc(24px + env(safe-area-inset-bottom,0px));max-height:86vh;overflow-y:auto;box-shadow:0 -10px 40px rgba(47,74,85,.2)}
@@ -1037,7 +1051,7 @@ Never speak as God, and never invent what God is saying. Return ONLY the questio
       : kind==='gratitude'
       ? '\n\nWrite one very short question that helps them notice something good in the last day or two. Small and ordinary is better than large. Under fifteen words.'
       : kind==='vision'
-      ? '\n\nWrite one question that helps them name a piece of the life they are praying toward — a specific, ordinary scene rather than a milestone or a number.'
+      ? '\n\nWrite one question that helps them name a piece of the life they are praying toward — a specific, ordinary scene from an ordinary day.'
       : '\n\nWrite one short question for them to answer in a line or two this morning.');
   const out=await callAI(db.settings,sys,u);
   return String(out||'').replace(/^["'\s]+|["'\s]+$/g,'').split('\n')[0].slice(0,220);
@@ -1243,7 +1257,7 @@ function Intake({
   const [palName, setPalName] = useState('Grace');
   const SEED_Q = [{
     q: 'Think of a season you genuinely didn’t know how you’d get through.',
-    w: 'It doesn’t have to be dramatic. Just a stretch where you couldn’t see the other side. What was it — and how did it actually turn out?',
+    w: 'Any stretch where you couldn’t quite see the other side. What was it, and how did it turn out?',
     ph: 'That year when…'
   }, {
     q: 'Who showed up at exactly the right time?',
@@ -1270,7 +1284,7 @@ function Intake({
     className: "ask"
   }, "Hi. I’m so glad you’re here."), /*#__PURE__*/React.createElement("p", {
     className: "why"
-  }, "This is a small, quiet room. There’s no streak to keep, no score, and nothing here is trying to get your attention back. Everything you write stays on your own device — I can’t see it, and neither can anyone else."), /*#__PURE__*/React.createElement("p", {
+  }, "This is a small, quiet room. It moves at whatever pace you do, and it will wait for you as long as you need. Everything you write stays on your own device — I can’t see it, and neither can anyone else."), /*#__PURE__*/React.createElement("p", {
     className: "why"
   }, "It’s built around one idea. If you’ve spent years bracing for the next thing to go wrong, telling yourself", /*#__PURE__*/React.createElement("em", null, " “I am abundant” "), " won’t land — some part of you just argues back. What does move is ", /*#__PURE__*/React.createElement("b", null, "evidence"), ". A record of the times there was enough when there shouldn’t have been. So that’s what we’ll build together: a cup that fills."), /*#__PURE__*/React.createElement("p", {
     className: "why"
@@ -1350,7 +1364,7 @@ function Intake({
     className: "ask"
   }, "What brought you here, ", name, "?"), /*#__PURE__*/React.createElement("p", {
     className: "why"
-  }, "Pick as many as fit, or write your own. There’s no wrong answer, and “I’m not sure yet” is a real one — it just means I’ll keep the questions wide instead of narrowing them."), /*#__PURE__*/React.createElement("div", {
+  }, "Pick as many as fit, or write your own. Every answer here is a good one. “I’m not sure yet” is welcome too — it simply means I’ll keep the questions wide and let you find your own way in."), /*#__PURE__*/React.createElement("div", {
     className: "chips"
   }, WHY_OPTS.map(o => /*#__PURE__*/React.createElement("button", {
     key: o,
@@ -1385,7 +1399,7 @@ function Intake({
     className: "ask"
   }, "What are you ", /*#__PURE__*/React.createElement("em", null, "carrying"), " these days?"), /*#__PURE__*/React.createElement("p", {
     className: "why"
-  }, "Plainly, in your own words. Not the tidy version — the actual one. This helps me know what to ask you on hard mornings, and it stays here on your device."), /*#__PURE__*/React.createElement(MicField, {
+  }, "Plainly, in your own words — however it really sits today. This helps me know what to ask you on hard mornings, and it stays here on your device."), /*#__PURE__*/React.createElement(MicField, {
     rows: 4,
     value: carrying,
     onValue: setCarrying,
@@ -1495,7 +1509,7 @@ function Intake({
     className: "ask"
   }, "Picture an ordinary afternoon in the life you’re praying toward."), /*#__PURE__*/React.createElement("p", {
     className: "why"
-  }, "Not the milestone. Not the number. A regular Tuesday, a few years from now, in the life you actually want. What’s happening? Who’s there? What are you doing at two in the afternoon?"), /*#__PURE__*/React.createElement(MicField, {
+  }, "A regular Tuesday, a few years from now, in the life you’re praying toward. What’s happening? Who’s there? What are you doing at two in the afternoon?"), /*#__PURE__*/React.createElement(MicField, {
     rows: 5,
     value: afternoon,
     onValue: setAfternoon,
@@ -1574,7 +1588,7 @@ function Intake({
     className: "why"
   }, "Grace drifts around the corner of the screen, notices things, and asks you a question now and then. She’s quiet by nature — tap her whenever you’d like her, and let her float when you’d rather have the room to yourself. She’s named for the thing that runs ahead of us."), /*#__PURE__*/React.createElement("p", {
     className: "why"
-  }, "She’s not a substitute for people. Part of her job is nudging you toward the actual humans in your life."), /*#__PURE__*/React.createElement("label", {
+  }, "Part of what she’s here for is to point you back toward the people who love you. She’ll mention them often."), /*#__PURE__*/React.createElement("label", {
     className: "field"
   }, "Call her something else, if you’d rather"), /*#__PURE__*/React.createElement("input", {
     type: "text",
@@ -1822,7 +1836,7 @@ function CupView({
        /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 16, lineHeight: 1.6, margin: '0 0 10px', color: 'var(--ink)' } },
          "A gathering place for every time there was enough."),
        /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 15.5, lineHeight: 1.6, margin: '0 0 10px', color: 'var(--ink-soft)' } },
-         "Not affirmations — evidence. When you’ve spent a long time braced for the next hard thing, being told it will all be fine tends to slide off. A record of the times it ", /*#__PURE__*/React.createElement("i", null, "was"), " fine is harder to argue with, because you were there."),
+         "This is a record of evidence. When you’ve spent a long time braced for the next hard thing, being told it will all be fine tends to slide off. A record of the times it ", /*#__PURE__*/React.createElement("i", null, "was"), " fine is harder to argue with, because you were there."),
        /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 15.5, lineHeight: 1.6, margin: '0 0 10px', color: 'var(--ink-soft)' } },
          "Anything belongs here. A door that opened. Someone who showed up. Something you dreaded that turned out gently. A morning from twenty years ago counts as much as this one."),
        /*#__PURE__*/React.createElement("p", { className: "serif", style: { fontSize: 15.5, lineHeight: 1.6, margin: 0, color: 'var(--ink-soft)' } },
@@ -2504,7 +2518,7 @@ function Vision({
       fontSize: 16,
       margin: '0 0 18px'
     }
-  }, "Not the milestone — the Tuesday. Each piece holds something that’s already true, so this stays a road you’re walking rather than a place you aren’t.")), hero && /*#__PURE__*/React.createElement("div", {
+  }, "An ordinary Tuesday in the life you’re praying toward. Each piece holds something that’s already true, so this stays a road you’re walking.")), hero && /*#__PURE__*/React.createElement("div", {
     className: "card",
     style: {
       padding: '17px 18px',
@@ -3144,198 +3158,149 @@ function Player({
 }
 
 /* ============================ COMPANION ============================ */
-function Companion({
-  db,
-  save,
-  go,
-  toast
-}) {
-  const [pos, setPos] = useState({
-    r: 18,
-    b: 96
-  });
-  const [msg, setMsg] = useState(null);
-  const [open, setOpen] = useState(false);
-  const [input, setInput] = useState('');
-  const [reply, setReply] = useState('');
-  const [busy, setBusy] = useState(false);
-  const name = db.companion.name || 'Grace';
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setPos({
-        r: 14 + Math.random() * 46,
-        b: 82 + Math.random() * 90
-      });
-    }, 14000);
-    return () => clearInterval(iv);
-  }, []);
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setMsg(pickNudge(db));
-    }, 7000);
-    const iv = setInterval(() => {
-      setMsg(m => m ? null : pickNudge(db));
-    }, 60000);
-    const hide = setInterval(() => {
-      setMsg(m => m ? null : m);
-    }, 26000);
-    return () => {
-      clearTimeout(t);
-      clearInterval(iv);
-      clearInterval(hide);
-    };
-  }, [db.cup.length, (db.journal || []).length, (db.able || []).length, (db.abilities || []).length, db.gratitude.length]);
-  async function ask() {
-    if (!input.trim()) return;
-    if (!db.settings.aiKey) {
-      setReply('__KEY__');
-      return;
-    }
-    setBusy(true);
-    setReply('');
-    try {
-      const ctx = `Their cup has ${db.cup.length} entries. Recent ones: ${db.cup.slice(0, 4).map(c => c.text).join(' | ') || 'none'}.
-Their vision includes: ${db.vision.map(v => v.title).join(', ') || 'nothing yet'}.
-They just said: "${input.trim()}"
-Reply as their companion — warm, brief, real. If they're spiralling, help them land. If it fits, point them toward a person in their life, or toward the Cup.`;
-      setReply(await callAI(db.settings, aiSystem(db.profile), ctx));
-    } catch (e) {
-      setReply('__ERR__' + e.message);
-    }
+function Companion({db,save,go,toast}){
+  const [pos,setPos]=useState({r:18,b:96});
+  const [msg,setMsg]=useState(null);
+  const [open,setOpen]=useState(false);
+  const [input,setInput]=useState('');
+  const [thread,setThread]=useState([]);      // the running conversation
+  const [busy,setBusy]=useState(false);
+  const [typing,setTyping]=useState(false);   // someone is writing elsewhere
+  const endRef=useRef(null);
+  const name=db.companion.name||'Grace';
+  const hasAI=!!db.settings.aiKey;
+  const small = typeof window!=='undefined' && window.innerWidth < 1000;
+
+  /* she drifts on a big screen; on a phone she stays put and out of the way */
+  useEffect(()=>{
+    if(small) return;
+    const iv=setInterval(()=>{ setPos({r:14+Math.random()*46,b:82+Math.random()*90}); },14000);
+    return()=>clearInterval(iv);
+  },[small]);
+
+  /* step aside while they're writing */
+  useEffect(()=>{
+    function isField(t){ return t && (t.tagName==='TEXTAREA' || (t.tagName==='INPUT' && t.type!=='date') ); }
+    function on(e){ if(isField(e.target)){ setTyping(true); setMsg(null); } }
+    function off(e){ if(isField(e.target)) setTimeout(()=>setTyping(false),140); }
+    document.addEventListener('focusin',on);
+    document.addEventListener('focusout',off);
+    return()=>{ document.removeEventListener('focusin',on); document.removeEventListener('focusout',off); };
+  },[]);
+
+  useEffect(()=>{
+    const t=setTimeout(()=>{ setMsg(pickNudge(db)); },7000);
+    const iv=setInterval(()=>{ setMsg(m=>m?null:pickNudge(db)); },60000);
+    const hide=setInterval(()=>{ setMsg(m=>m?null:m); },26000);
+    return()=>{ clearTimeout(t); clearInterval(iv); clearInterval(hide); };
+  },[db.cup.length,(db.journal||[]).length,(db.able||[]).length,(db.abilities||[]).length,db.gratitude.length]);
+
+  useEffect(()=>{ if(endRef.current) try{ endRef.current.scrollIntoView({block:'end'}); }catch(e){} },[thread,busy]);
+
+  function sys(extra){
+    return aiSystem(db.profile)+`
+
+RIGHT NOW you are in a quiet back-and-forth with them, tapped open from the corner of the app. Keep your turns short — a few sentences — and warm. Respond to what they actually said rather than summarising their life back at them. Ask at most one question, and only when it opens something. Silence and small replies are fine.
+Here is everything they have told this app:
+${graceContext(db)}`+(extra||'');
+  }
+
+  async function send(text,extraSys){
+    const t=(text||input).trim();
+    if(!t && !extraSys) return;
+    if(!hasAI){ setThread(x=>[...x,{role:'me',text:t},{role:'ai',text:'__KEY__'}]); setInput(''); return; }
+    const next = t ? [...thread,{role:'me',text:t}] : thread;
+    setThread(next); setInput(''); setBusy(true);
+    try{
+      const msgs = next.filter(m=>!(m.role==='ai'&&m.text.startsWith('__')))
+        .map(m=>({role:m.role==='ai'?'assistant':'user',content:m.text}));
+      if(!msgs.length) msgs.push({role:'user',content:'Tell me what you are noticing.'});
+      const out=await callAIMessages(db.settings,sys(extraSys),msgs);
+      setThread(x=>[...x,{role:'ai',text:out}]);
+    }catch(e){ setThread(x=>[...x,{role:'ai',text:'__ERR__'+e.message}]); }
     setBusy(false);
   }
-  return /*#__PURE__*/React.createElement(React.Fragment, null, msg && !open && /*#__PURE__*/React.createElement("div", {
-    className: "bub",
-    style: {
-      right: pos.r + 58,
-      bottom: pos.b + 4
-    },
-    onClick: () => setMsg(null)
-  }, msg), /*#__PURE__*/React.createElement("button", {
-    className: "pal",
-    style: {
-      right: pos.r,
-      bottom: pos.b
-    },
-    onClick: () => {
-      setOpen(true);
-      setMsg(null);
-      if (!(db.companion && db.companion.metGrace)) save({ ...db, companion: { ...(db.companion || {}), metGrace: true } });
-    },
-    "aria-label": name ? 'Talk to ' + name : 'Companion'
-  }, /*#__PURE__*/React.createElement("i", null)), open && /*#__PURE__*/React.createElement("div", {
-    className: "sheet",
-    onClick: () => {
-      setOpen(false);
-      setReply('');
-      setInput('');
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "sheetin settle",
-    onClick: e => e.stopPropagation()
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "grab"
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "eyebrow"
-  }, name || 'Your companion'), /*#__PURE__*/React.createElement("h3", {
-    className: "display",
-    style: {
-      fontSize: 22,
-      fontWeight: 600,
-      margin: '2px 0 12px'
-    }
-  }, reply ? 'Here’s what I think.' : 'What’s on your mind?'), !reply && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MicField, {
-    rows: 3,
-    value: input,
-    onValue: setInput,
-    placeholder: "Anything at all. I’ve been reading along.",
-    autoFocus: true
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "navrow"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "btn",
-    disabled: !input.trim() || busy,
-    onClick: ask
-  }, busy ? 'Thinking…' : 'Say it'), /*#__PURE__*/React.createElement("button", {
-    className: "skip",
-    onClick: () => {
-      setOpen(false);
-      setInput('');
-    }
-  }, "Never mind")), /*#__PURE__*/React.createElement("div", {
-    className: "rule"
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "btn ghost sm",
-    onClick: () => {
-      setOpen(false);
-      go('cup');
-    }
-  }, "Show me my cup"), db.settings.aiKey && /*#__PURE__*/React.createElement("button", {
-    className: "btn ghost sm",
-    disabled: busy,
-    onClick: async () => {
-      setBusy(true); setReply('');
-      try {
-        const sys = aiSystem(db.profile) + "\n\nRIGHT NOW: they have asked what you notice about them. Read across everything below — their intake, their cup, their journal, what they keep returning to — and reflect it back.\n\nGive them: (1) one pattern you genuinely see, named specifically and kindly, with the evidence you are drawing on so they can check you; (2) if there is one, something that has SHIFTED since they started, because people rarely notice their own movement; (3) one thing good about them that they have not given themselves credit for.\n\nFour to seven sentences. Warm, plain, specific. No lists, no headings, no flattery, no diagnosis, no clinical labels. Speak as a friend who has been paying attention, and hold it lightly — say you might be wrong rather than pronouncing on them. End with one short question.\n\nIMPORTANT — where it genuinely fits, and only then, say plainly that this looks like something worth taking to a therapist. Specifically when you see: a pattern that clearly predates this app and traces back to something old or painful; distress that keeps returning no matter how much insight they gather; self-blame or shame that does not shift; or anything they seem to be carrying alone. Say it warmly and without alarm — that a good therapist is for building something insight alone cannot build, not a sign anything is wrong with them. Never diagnose, never name a condition. And if anything suggests they are in real danger or crisis, set everything else aside and urge them, gently and directly, to reach a person today — someone who loves them, their doctor, or a crisis line.\n\nRemember you are not their therapist and not a substitute for one, and say so if the moment calls for it. Never speak as God or invent what God is saying.";
-        setReply(await callAI(db.settings, sys, 'Here is everything they have told this app:\n\n' + graceContext(db)));
-      } catch (e) { setReply('__ERR__' + e.message); }
-      setBusy(false);
-    }
-  }, "What are you noticing about me?"), /*#__PURE__*/React.createElement("button", {
-    className: "btn ghost sm",
-    onClick: () => {
-      setOpen(false);
-      go('still');
-    }
-  }, "I need to be still"), /*#__PURE__*/React.createElement("button", {
-    className: "btn ghost sm",
-    onClick: () => {
-      setOpen(false);
-      go('journal');
-    }
-  }, "I want to write it out"), /*#__PURE__*/React.createElement("button", {
-    className: "btn ghost sm",
-    onClick: () => {
-      setOpen(false);
-      go('vision');
-    }
-  }, "Remind me where I’m going"))), reply === '__KEY__' && /*#__PURE__*/React.createElement("div", {
-    className: "hint"
-  }, "I can only really talk back with an AI key added in Settings. Without one, I’ll still wander over and notice things — and everything else in the app works exactly the same."), reply.startsWith('__ERR__') && /*#__PURE__*/React.createElement("div", {
-    className: "hint"
-  }, "Something went wrong: ", reply.slice(7)), reply && !reply.startsWith('__') && /*#__PURE__*/React.createElement("p", {
-    className: "serif",
-    style: {
-      fontSize: 17,
-      lineHeight: 1.62,
-      whiteSpace: 'pre-wrap'
-    }
-  }, reply), reply && /*#__PURE__*/React.createElement("div", {
-    className: "navrow"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "btn ghost sm",
-    onClick: () => {
-      setReply('');
-      setInput('');
-    }
-  }, "Say something else"), /*#__PURE__*/React.createElement("button", {
-    className: "btn sm",
-    onClick: () => {
-      setOpen(false);
-      setReply('');
-      setInput('');
-    }
-  }, "Thanks")))));
+
+  async function noticing(){
+    if(!hasAI){ setThread(x=>[...x,{role:'ai',text:'__KEY__'}]); return; }
+    setThread(x=>[...x,{role:'me',text:'What are you noticing about me?'}]);
+    setBusy(true);
+    try{
+      const extra = "\n\nTHIS TURN: they have asked what you notice about them. Give (1) one pattern you genuinely see, named kindly, with the evidence so they can check you; (2) something that has SHIFTED since they started, because people rarely notice their own movement; (3) one good thing they have not given themselves credit for. Four to seven sentences, no lists, no diagnosis, no clinical labels. Hold it lightly — say you might be wrong. End with one short question. Where it genuinely fits, say plainly that something looks worth taking to a therapist — warmly, never as a verdict. If anything suggests real danger, set everything aside and urge them to reach a person today.";
+      const out=await callAIMessages(db.settings,sys(extra),[{role:'user',content:'What are you noticing about me?'}]);
+      setThread(x=>[...x,{role:'ai',text:out}]);
+    }catch(e){ setThread(x=>[...x,{role:'ai',text:'__ERR__'+e.message}]); }
+    setBusy(false);
+  }
+
+  function close(){ setOpen(false); }
+
+  const bubble=(m,i)=>{
+    if(m.role==='ai'&&m.text==='__KEY__') return React.createElement('div',{key:i,className:'hint'},
+      name+' can only talk back with an AI key added in Settings. Everything else here works without one.');
+    if(m.role==='ai'&&m.text.startsWith('__ERR__')) return React.createElement('div',{key:i,className:'hint'},
+      'Couldn’t reach '+name+' just now. '+m.text.slice(7));
+    return React.createElement('div',{key:i,style:{display:'flex',margin:'0 0 11px',
+      justifyContent:m.role==='me'?'flex-end':'flex-start'}},
+      React.createElement('div',{className:m.role==='me'?'':'serif',
+        style:{maxWidth:'86%',padding:'11px 14px',
+          borderRadius:m.role==='me'?'15px 15px 4px 15px':'15px 15px 15px 4px',
+          background:m.role==='me'?'var(--dark)':'var(--card)',
+          color:m.role==='me'?'#fff':'var(--ink)',
+          border:m.role==='me'?'none':'1px solid var(--line)',
+          fontSize:m.role==='me'?14.5:16,lineHeight:1.6,whiteSpace:'pre-wrap'}},m.text));
+  };
+
+  return React.createElement(React.Fragment,null,
+    msg&&!open&&!typing&&React.createElement('div',{className:'bub',
+      style:{right:(small?18:pos.r)+58,bottom:(small?96:pos.b)+4},
+      onClick:()=>setMsg(null)},msg),
+    React.createElement('button',{className:'pal'+(typing?' away':''),
+      style:{right:small?16:pos.r,bottom:small?18:pos.b},
+      onClick:()=>{ setOpen(true); setMsg(null);
+        if(!(db.companion&&db.companion.metGrace)) save({...db,companion:{...(db.companion||{}),metGrace:true}}); },
+      'aria-label':'Talk to '+name},React.createElement('i',null)),
+
+    open&&React.createElement('div',{className:'sheet',onClick:close},
+      React.createElement('div',{className:'sheetin settle graceroom',onClick:e=>e.stopPropagation()},
+        React.createElement('div',{className:'grab'}),
+        React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:10}},
+          React.createElement('span',{className:'eyebrow'},name),
+          thread.length>0&&React.createElement('button',{className:'skip',style:{padding:0},
+            onClick:()=>setThread([])},'start again')),
+        thread.length===0&&React.createElement('div',null,
+          React.createElement('h3',{className:'display',style:{fontSize:22,fontWeight:600,margin:'2px 0 6px'}},
+            'What’s on your mind?'),
+          React.createElement('p',{className:'serif muted',style:{fontSize:15.5,margin:'0 0 14px'}},
+            'I’ve been reading along. Say as much or as little as you like — we can keep talking as long as you want.')),
+
+        React.createElement('div',{className:'gracethread'},
+          thread.map(bubble),
+          busy&&React.createElement('p',{className:'serif muted',style:{fontSize:15,margin:'2px 0 10px'}},'…'),
+          React.createElement('div',{ref:endRef})),
+
+        React.createElement('div',{className:'graceinput'},
+          React.createElement(MicField,{rows:2,value:input,onValue:setInput,
+            autoFocus:thread.length===0,
+            placeholder:thread.length?'Say more…':'Anything at all.'}),
+          React.createElement('div',{style:{display:'flex',gap:9,alignItems:'center',marginTop:9,flexWrap:'wrap'}},
+            React.createElement('button',{className:'btn sm',disabled:!input.trim()||busy,
+              onClick:()=>send()},busy?'Thinking…':'Send'),
+            thread.length===0&&React.createElement('button',{className:'btn ghost sm',disabled:busy,
+              style:{opacity:hasAI?1:.65},
+              onClick:()=>{ if(!hasAI){ toast('Add an AI key in Settings and '+name+' can talk back'); return; } noticing(); }},
+              '✨ What are you noticing about me?'),
+            React.createElement('button',{className:'skip',onClick:close},'Not now')),
+          thread.length===0&&React.createElement('div',{style:{display:'grid',gap:8,marginTop:14}},
+            React.createElement('button',{className:'btn ghost sm',onClick:()=>{close();go('cup');}},'Show me my cup'),
+            React.createElement('button',{className:'btn ghost sm',onClick:()=>{close();go('still');}},'I need to be still'),
+            React.createElement('button',{className:'btn ghost sm',onClick:()=>{close();go('journal');}},'I want to write it out'),
+            React.createElement('button',{className:'btn ghost sm',onClick:()=>{close();go('vision');}},'Remind me where I’m going'))
+        )
+      ))
+  );
 }
-function daysSince(iso){
-  if(!iso) return 999;
-  return Math.floor((Date.now()-new Date(iso).getTime())/86400000);
-}
+
 function pickNudge(db) {
   const name=(db.companion&&db.companion.name)||'Grace';
   if (!(db.companion && db.companion.metGrace)) {
@@ -3399,7 +3364,7 @@ function pickNudge(db) {
 
   /* an invitation, and a nudge outward */
   if(db.settings.aiKey) pool.push('I’ve been reading along. Ask me anything — even just “what are you noticing?”');
-  pool.push('When did you last talk to someone who knows you well? Not me — a person.');
+  pool.push('When did you last talk to someone who knows you well? Someone who can sit in the room with you.');
   pool.push('If the worry shows up today, come read the cup before you check anything.');
   pool.push('Nothing is wrong in this exact minute. Worth noticing.');
   pool.push('You don’t have to earn today.');
@@ -3536,7 +3501,7 @@ function Settings({
       fontSize: 14.5,
       margin: '0 0 11px'
     }
-  }, "Everything here works without this. With an Anthropic key, your companion can actually respond, and the questions can be written for your season instead of drawn from a list. The key stays on your device."), /*#__PURE__*/React.createElement("input", {
+  }, "Everything here works without this. With an Anthropic key, your companion can actually respond, and the questions can be written for your season. The key stays on your device."), /*#__PURE__*/React.createElement("input", {
     type: "text",
     value: key,
     onChange: e => setKey(e.target.value),
@@ -3600,7 +3565,7 @@ function Settings({
   }, "Your things"), /*#__PURE__*/React.createElement("p", {
     className: "serif muted",
     style: { fontSize: 14.5, margin: '0 0 11px' }
-  }, "Everything stays on this device — no server, no account. Keep a backup somewhere safe, or carry it to another phone. ", /*#__PURE__*/React.createElement("b", null, "Merge"), " adds a backup to what’s already here without overwriting anything, so two devices can stay in step. ", /*#__PURE__*/React.createElement("b", null, "Replace"), " swaps this device’s contents for the backup instead."),
+  }, "Everything stays on this device, and it lives here with you. Keep a backup somewhere safe, or carry it to another phone. ", /*#__PURE__*/React.createElement("b", null, "Merge"), " adds a backup to what’s already here without overwriting anything, so two devices can stay in step. ", /*#__PURE__*/React.createElement("b", null, "Replace"), " swaps this device’s contents for the backup instead."),
      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
        /*#__PURE__*/React.createElement("button", { className: "btn ghost sm", disabled: !!bBusy, onClick: () => exportData(false) }, "Export my writing"),
        /*#__PURE__*/React.createElement("button", { className: "btn ghost sm", disabled: !!bBusy, onClick: () => exportData(true) }, "Export everything"),
@@ -3637,7 +3602,7 @@ function Settings({
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "eyebrow"
-  }, "What this is, and what it isn’t"), /*#__PURE__*/React.createElement("p", {
+  }, "What this room is for"), /*#__PURE__*/React.createElement("p", {
     className: "serif muted",
     style: { fontSize: 14.5, margin: '0 0 9px' }
   }, "This space is for building gentle habits — gratitude, reflection, stillness, and a steadier way of recognizing what you already have."),
@@ -3757,7 +3722,7 @@ const ABILITY_NUDGES=[
  "What can you sit with now that used to send you looking for something to do?",
  "What conversation could you have today that you’d have rehearsed for a week once?",
  "What no longer frightens you that used to?",
- "What do you notice about yourself now, in the moment, instead of afterwards?",
+ "What do you notice about yourself while it’s happening now?",
  "What can you say out loud that you used to only think?",
  "What can you let be unfinished?",
  "Where are you slower to panic than you were?",
@@ -3787,7 +3752,7 @@ function Abilities({db,save,toast}){
       React.createElement('span',{className:'eyebrow'},'Things I couldn’t do before  '+(open?'▾':'▸'))),
     open&&React.createElement('div',{className:'settle'},
       React.createElement('p',{className:'serif muted',style:{fontSize:15.5,lineHeight:1.62,margin:'6px 0 14px'}},
-        'Not things you’ve accomplished — things you can now do. The way you handle a hard hour. What you can say. What you can sit with. These change so slowly that nobody notices their own, which is exactly why it’s worth writing them down.'),
+        'Things you can do now. The way you handle a hard hour. What you can say. What you can sit with. These change so slowly that nobody notices their own, which is exactly why it’s worth writing them down.'),
       list.length===0&&React.createElement('p',{className:'serif muted',style:{fontSize:15,margin:'0 0 14px'}},
         'Add one whenever you notice it. Once a month is plenty — this is a list that gets its power from years.'),
       list.map(a=>React.createElement('div',{key:a.id,
